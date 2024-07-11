@@ -1,0 +1,237 @@
+/*******************************
+ **     Global parameters     **
+ *******************************/
+title = "Simulations 4 populations";
+seed = "%seed_file%";
+nthread = %nthread%;
+nrep  = 1;                    //Number of replicates
+h2    = 0.3;                  //Heritability
+qtlh2 = 0.3;                  //QTL heritability
+phvar = 1.0;                  //Phenotypic variance
+skip_inbreeding;
+
+/*******************************
+ **   Historical population   **
+ *******************************/
+begin_hp;
+   hg_size = 300 [0]         //Size of the historical generations
+			 250 [100]
+			 300 [200] 
+			 300 [210]
+			 2400 [211];
+	nmfhg = 50;
+end_hp;
+
+/*******************************
+ **   Populations A      **
+ *******************************/
+
+begin_pop = "A1";
+   begin_founder;
+      male   [n = 100,  pop = "hp", select = rnd];
+      female [n = 500,  pop = "hp", select = rnd];
+   end_founder;
+   ng = 1;					 //Number of generations
+   ls  = 4;                  //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = rnd;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur 0.3 /true_av;
+   sd  = rnd;                //Selection design
+   begin_popoutput;
+        stat;
+   end_popoutput;
+end_pop;
+
+begin_pop = "A2";
+   begin_founder;
+      male   [n = 200,  pop = "A1", gen=1, select = rnd];
+      female [n = 1000,  pop = "A1", gen=1, select = rnd];
+   end_founder;
+   ng = 70;					 //Number of generations
+   ls  = 10;                 //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = rnd;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur 0.3 /true_av;
+   sd  = rnd;                //Selection design
+   begin_popoutput;
+        stat;
+  end_popoutput;
+end_pop;
+
+begin_pop = "A";
+   begin_founder;
+      male   [n = 20,  pop = "A2", gen=70, select = rnd];
+      female [n = 100,  pop = "A2", gen=70, select = rnd];
+   end_founder;
+   ng = 10;					 //Number of generations
+   ls  = 10;                 //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = rnd;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur 0.3 /true_av;
+   sd  = rnd;                //Selection design
+   begin_popoutput;
+		  data;
+      stat;
+		  allele_freq /gen 8 9 10 ;
+		  genotype /gen 8 9 10 ;
+   end_popoutput;
+end_pop;
+
+/*******************************
+ **   Populations B      **
+ *******************************/
+
+begin_pop = "B1";
+   begin_founder;
+      male   [n = 100,  pop = "hp", select = rnd];
+      female [n = 500,  pop = "hp", select = rnd];
+   end_founder;
+   ng = 1;					 //Number of generations
+   ls  = 4;                  //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = rnd;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur 0.3 /true_av;
+   sd  = rnd;                //Selection design
+   begin_popoutput;
+        stat;
+   end_popoutput;
+end_pop;
+
+begin_pop = "B2";
+   begin_founder;
+      male   [n = 200,  pop = "B1", gen=1, select = phen /h];
+      female [n = 1000,  pop = "B1", gen=1, select = phen /h];
+   end_founder;
+   ng = 40;					 //Number of generations
+   ls  = 10;                 //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = rnd;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur 0.3 /true_av;
+   sd  = phen /h;                //Selection design
+   begin_popoutput;
+        stat;
+  end_popoutput;
+end_pop;
+
+begin_pop = "B";
+   begin_founder;
+      male   [n = 20,  pop = "B2", gen=40, select = rnd];
+      female [n = 100,  pop = "B2", gen=40, select = rnd];
+   end_founder;
+   ng = 10;					 //Number of generations
+   ls  = 10;                 //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = rnd;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur 0.3 /true_av;
+   sd  = rnd;                //Selection design
+   begin_popoutput;
+		  data;
+      stat;
+		  allele_freq /gen 8 9 10 ;
+		  genotype /gen 8 9 10 ;
+   end_popoutput;
+end_pop;
+
+/*******************************
+ **   Populations C      **
+ *******************************/
+
+begin_pop = "C1";
+   begin_founder;
+      male   [n = 100,  pop = "hp", select = rnd];
+      female [n = 500,  pop = "hp", select = rnd];
+   end_founder;
+   ng = 1;					 //Number of generations
+   ls  = 4;                  //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = rnd;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur 0.3 /true_av;
+   sd  = rnd;                //Selection design
+   begin_popoutput;
+        stat;
+   end_popoutput;
+end_pop;
+
+begin_pop = "C2";
+   begin_founder;
+      male   [n = 200,  pop = "C1", gen=1, select = phen /l];
+      female [n = 1000,  pop = "C1", gen=1, select = phen /l];
+   end_founder;
+   ng = 10;					 //Number of generations
+   ls  = 10;                 //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = rnd;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur 0.3 /true_av;
+   sd  = phen /l;                //Selection design
+   begin_popoutput;
+        stat;
+  end_popoutput;
+end_pop;
+
+begin_pop = "C";
+   begin_founder;
+      male   [n = 20,  pop = "C2", gen=10, select = rnd];
+      female [n = 100,  pop = "C2", gen=10, select = rnd];
+   end_founder;
+   ng = 10;					 //Number of generations
+   ls  = 10;                 //Litter size
+   pmp = 0.5 /fix;           //Proportion of male progeny 
+   md = rnd;                //Mating design
+   sr = 1;					 //Sire replacement (1 -> discrete generations)
+   dr = 1;					 //Dam replacement (1 -> discrete generations)
+   ebv_est = accur 0.3 /true_av;
+   sd  = rnd;                //Selection design
+   begin_popoutput;
+		  data;
+      stat;
+		  allele_freq /gen 8 9 10 ;
+		  genotype /gen 8 9 10 ;
+   end_popoutput;
+end_pop;
+
+/*******************************
+ **          Genome           **
+ *******************************/
+begin_genome;
+   begin_chr = 18;
+      chrlen = 100;          	//Chromosome length in cM
+      nmloci = 200000;      //Number of markers --> Markers from QMSim were used to select markers and causal loci for the analysis
+      mpos   = rnd;          	//Marker positions
+      nma    = all 2;        	//Number of marker alleles
+      maf    = rnd;          	//Marker allele frequencies
+      nqloci = 100;     	//Number of QTL
+      qpos   = rnd;          	//QTL positions
+      nqa    = all 2;     		//Number of QTL alleles
+      qaf    = all 0.3 0.7;     //QTL allele frequencies
+      qae    = rndn;      		//QTL allele effects
+     end_chr;
+   select_seg_loci;
+   mmutr  = 0.00005 /recurrent; //rate of marker mutation in historical population
+   qmutr  = 0.00005 /recurrent; //rate of marker mutation in historical population
+   mean_crossover = 1;  	    //mean number of crossovers per Morgan
+end_genome;
+
+/*******************************
+ **       Output options      **
+ *******************************/
+begin_output;
+	output_folder = "rep1";
+	linkage_map;
+	hp_stat;
+end_output;
