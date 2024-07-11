@@ -1,18 +1,15 @@
 #!/usr/bin/bash
 #SBATCH --job-name=GP_CV
-#SBATCH --output=/work/home/ljfgroup01/WORKSPACE/liwn/code/GitHub/GP-cross-validation/log/GP_cross_%j.log
 
 ########################################################################################################################
-## 版本: 1.1.1
-## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-09-09
+## Version:   1.2.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-07-07
 ## 
-## 功能：
-## 1.根据提供的plink格式的基因型文件进行表型模拟
-## 2.根据提供的表型和基因型(系谱)信息进行"品种内"遗传评估并计算评估准确性
-## 3.                              "多品种"
 ## 
-## 使用: GP_cross_validation.sh --help
+## Usage: GP_cross_validation.sh --help
 ## 
 ## License:
 ##  This script is licensed under the GPL-3.0 License.
@@ -21,8 +18,8 @@
 
 
 
-###################  参数处理  #####################
-###################################################
+###################  Parameter processing  #####################
+################################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## 参数名
 TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,prior:,bin:,bin_sim:,tbv_col:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,min:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,debug,suffix,dense,noCov,append,overlap,evenly,help \
@@ -49,7 +46,7 @@ while true; do
     --burnin )   burnin="$2";   shift 2 ;; ## MCMC burn-in循环数 [20000]
     --ref )      ref="$2";      shift 2 ;; ## 用于区间划分的SNP面板，M/1/2/... [M]
     --dirPre )   dirPre="$2";   shift 2 ;; ## multi情形中在文件夹增加的前缀，如pre_multi_A_B [NULL]
-    --method)    method="$2";   shift 2 ;; ## 育种值估计方法，可为PBLUP/GBLUP/ssGBLUP/BayesAS [GBLUP]
+    --method)    method="$2";   shift 2 ;; ## 育种值估计方法，可为BLUP/GBLUP/ssGBLUP/BayesABLD [GBLUP]
     --nsnp_cor ) nsnp_cor="$2"; shift 2 ;; ## 当设定指定数目区间内品种间存在遗传相关时，区间内的QTL数目 [10]
     --nbin_cor ) nbin_cor="$2"; shift 2 ;; ## 设定指定数目区间内品种间存在遗传相关 [10]
     --nsnp_sim ) nsnp_sim="$2"; shift 2 ;; ## 性状模拟时，以固定数目进行区间划分时，每个区间内所含的标记数 [60]
@@ -153,7 +150,7 @@ export PATH=${code}/bin:$PATH
 source ${func}
 
 ## 检查需要的程序是否在环境变量中能检索到并且可执行
-check_command plink gmatrix mbBayesAS LD_mean_r2 run_dmu4 run_dmuai
+check_command plink gmatrix mbBayesABLD LD_mean_r2 run_dmu4 run_dmuai
 
 ## 检查需要的脚本文件是否存在且具有执行权限
 check_command $pheno_sim $GP_single $GP_multi $block_define $phe_adj
@@ -207,7 +204,7 @@ elif [[ ${type} == "within" ]]; then
   if [[ ${method} == "GBLUP" ]]; then
     out=${out:="accur_GBLUP.txt"}
   else
-    out=${out:="accur_BayesAS.txt"}
+    out=${out:="accur_BayesABLD.txt"}
   fi
 fi
 
@@ -311,8 +308,8 @@ elif [[ ${type} == "adj" ]]; then
     mkdir -p ${phedir}
     cd "${phedir}" || exit
 
-    [[ -s ${phedir}/phe_adj_PBLUP.txt ]] && \
-      echo "Warning: phe_adj_PBLUP.txt existe! "
+    [[ -s ${phedir}/phe_adj_BLUP.txt ]] && \
+      echo "Warning: phe_adj_BLUP.txt existe! "
 
     for b in "${breeds_array[@]}"; do
       ## 分析指定表型中指定品种的文件夹
@@ -342,11 +339,11 @@ elif [[ ${type} == "adj" ]]; then
         $phe_adj \
           --phereal ${pi} \
           --bfile ${b} \
-          --DIR phe_adj_PBLUP \
+          --DIR phe_adj_BLUP \
           --phef ${b}_dmu.txt \
           --all_eff "${all_eff}" \
           --ran_eff "${ran_eff}" \
-          --out ${phedir}/phe_adj_PBLUP.txt \
+          --out ${phedir}/phe_adj_BLUP.txt \
           --append &>>${logf}
       fi
     done
@@ -425,8 +422,8 @@ elif [[ ${type} == "within" ]]; then
     phedir=${proj}/${ti}
 
     ## 真实育种值所在文件
-    if [[ -s ${phedir}/phe_adj_PBLUP.txt ]]; then
-      tbvf=${phedir}/phe_adj_PBLUP.txt
+    if [[ -s ${phedir}/phe_adj_BLUP.txt ]]; then
+      tbvf=${phedir}/phe_adj_BLUP.txt
     else
       tbvf=${phef}
     fi
@@ -502,9 +499,9 @@ elif [[ ${type} == "blend" || ${type} == "union" || ${type} == "multi" ]]; then
     fi
 
     ## 真实育种值所在文件
-    if [[ -s ${phedir}/phe_adj_PBLUP.txt ]]; then
+    if [[ -s ${phedir}/phe_adj_BLUP.txt ]]; then
       ## 校正表型
-      tbvf=${phedir}/phe_adj_PBLUP.txt
+      tbvf=${phedir}/phe_adj_BLUP.txt
     else
       ## 表型文件中含"真实"育种值
       tbvf=${phef}

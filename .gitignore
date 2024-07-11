@@ -61,6 +61,7 @@ dkms.conf
 
 # debug
 build/
+output/
 
 # log files
 log

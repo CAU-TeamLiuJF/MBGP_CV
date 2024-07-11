@@ -12,7 +12,7 @@
 ##  1. R/4.1.0
 ##  2. plink/1.9
 ##  3. gmatrix
-##  4. mbBayesAS
+##  4. mbBayesABLD
 ##  5. 其他R语言和Bash脚本
 ## 
 ## License:
@@ -267,8 +267,8 @@ if [[ -s ${bfile}.fam || -s ${gmat} ]] && [[ ! -s ${pedf} ]]; then
   phef=${phef}_gid
   add_sol=3
 elif [[ ! -s ${bfile}.fam && -s ${pedf} ]]; then
-  ## PBLUP
-  method=PBLUP
+  ## BLUP
+  method=BLUP
   sed -i "s#%VAR_STR%#${add_rf} PED ${invA} ASCII ${pedf}#g" ${DIR}.DIR
   add_sol=4
 else

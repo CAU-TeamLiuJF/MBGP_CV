@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 # debug
 # setwd('D:/CauDrive/QMSim/LD')
 # opt <- list(ldList="breedAsq_chr1 breedBsq_chr1", out="breedA_breedB_chr1", chr=1)

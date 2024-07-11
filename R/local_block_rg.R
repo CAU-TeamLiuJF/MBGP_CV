@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 ## 根据提供的plink二进制文件估计LD独立区域 ##
 
 ## 命令行参数

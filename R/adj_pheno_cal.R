@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 ## 根据dmu结果文件和表型文件计算校正表型(校正固定效应和非加性效应)
 
 # 加载需要的程序包

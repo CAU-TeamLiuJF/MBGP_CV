@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 
 ## 根据plink特征向量结果进行 PCA 作图
 ## 输入文件：plink生成的主成分分析结果文件*.eigenvec，前4列需要为FID、IID、PC1、PC2

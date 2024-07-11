@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 ## 字符串自由组合 ###
 ## 如输入：A B C
 ## 在不加其他限制的情况下会输出3种组合：'A B' 'A C' 'B C' 'A B C'

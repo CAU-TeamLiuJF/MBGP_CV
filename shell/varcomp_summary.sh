@@ -68,7 +68,7 @@ cor=${cor:="/"}
 unset R_HOME
 
 ## DMU参数卡名称
-DIR_full=phe_adj_PBLUP
+DIR_full=phe_adj_BLUP
 DIR_within=within
 DIR_blend=blend
 DIR_union=union

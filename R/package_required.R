@@ -1,4 +1,4 @@
-#!/home/zyzzuser01/miniconda3/envs/R-4.2.2/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 
 ## 检查需要的R包是否都已安装  ##
 ## liwn 2023-09-07 ##

@@ -12,7 +12,7 @@
 ##  1. R
 ##  2. plink/1.9
 ##  3. gmatrix
-##  4. mbBayesAS
+##  4. mbBayesABLD
 ##  5. 其他R语言和Bash脚本
 ##
 ## License:
@@ -54,7 +54,7 @@ while true; do
       --phereal) phereal="$2";    shift 2 ;; ## 表型在表型文件中实数列的位置 [1]
       --all_eff) all_eff="$2";    shift 2 ;; ## DIR中$MODEL第3行，前3位数不需要，只需要所有效应所在的列，如"2 3 1"
       --ran_eff) ran_eff="$2";    shift 2 ;; ## DIR中$MODEL第4行，第1位数不需要，只需要所有随机效应所在分组，如"1" [1]
-      --method)  method="$2";     shift 2 ;; ## 育种值估计方法，可为PBLUP/GBLUP/ssGBLUP/BayesAS [GBLUP]
+      --method)  method="$2";     shift 2 ;; ## 育种值估计方法，可为BLUP/GBLUP/ssGBLUP/BayesABLD [GBLUP]
       --bin )    bin="$2";        shift 2 ;; ## 是否合并临近窗口，fix/frq/ld/ind/cubic [ind]
       --binf )   binf="$2";       shift 2 ;; ## 区间文件
       --seed )   seed="$2";       shift 2 ;; ## MCMC抽样及验证群划分时的随机种子 [40296]
@@ -153,7 +153,7 @@ elif [[ ! ${label} ]]; then
 fi
 
 ## 检查需要的程序是否在环境变量中能检索到并且可执行
-check_command plink gmatrix mbBayesAS LD_mean_r2 run_dmu4 run_dmuai
+check_command plink gmatrix mbBayesABLD LD_mean_r2 run_dmu4 run_dmuai
 
 ## 检查需要的脚本文件是否存在且具有执行权限
 check_command $phe_group $accur_cal $keep_phe_gid $job_pool $func
@@ -325,8 +325,8 @@ if [[ ${method} == "GBLUP" ]]; then
   sed -i "s#%VAR_STR%#${add_rf} GREL ASCII ${gmat}#g" ${DIR}.DIR
   ## 加性效应在SOL结果文件中的代码
   add_sol=3
-elif [[ ${method} == "PBLUP" ]]; then
-  ## PBLUP
+elif [[ ${method} == "BLUP" ]]; then
+  ## BLUP
   sed -i "s#%VAR_STR%#${add_rf} PED ${invA} ASCII ${pedf}#g" ${DIR}.DIR
   add_sol=4
 elif [[ ${method} == "ssGBLUP" ]]; then
@@ -403,7 +403,7 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
     check_alphabet ${workdir}/val${f}/rep${r}/pheno.txt
 
     ## 育种值估计
-    if [[ ${method} == "BayesAS" ]]; then
+    if [[ ${method} == "BayesABLD" ]]; then
       ## 如果没有提供binf文件，则执行BayesA
       if [[ ! -s ${binf} ]]; then
         binf=${workdir}/val${f}/rep${r}/fixed_bins_1.txt
@@ -425,7 +425,7 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
       fix_eff=${all_eff%" ${ran_eff}"}
 
       ## 运行Bayes模型
-      job_pool_run mbBayesAS \
+      job_pool_run mbBayesABLD \
         --bfile ${bfile} \
         --phef ${workdir}/val${f}/rep${r}/pheno.txt \
         --fix "${fix_eff}" \
@@ -479,7 +479,7 @@ if [[ ${method} =~ 'BLUP' ]]; then
   option="${option} --add_sol ${add_sol} --dir_val ${workdir}/val#val#/rep#rep#/${DIR}"
   ebv_col=1
 else
-  ## BayesAS模型
+  ## BayesABLD模型
   ebv_col=2
   option="${option} --ebvf ${workdir}/val#val#/rep#rep#/EBV_${bin}_y1.txt"
 fi

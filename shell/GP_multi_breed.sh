@@ -12,7 +12,7 @@
 ##  1. R
 ##  2. plink/1.9
 ##  3. gmatrix
-##  4. mbBayesAS
+##  4. mbBayesABLD
 ##  5. 其他R语言和Bash脚本
 ##
 ## License:
@@ -46,7 +46,7 @@ while true; do
   --priorRg )   rg="$2";         shift 2 ;; ## 群体A和B的加性相关大小先验(两性状模型) [0.001]
   --priorRe )   re="$2";         shift 2 ;; ## 群体A和B的残差相关大小先验(两性状模型) [0.001]
   --DIR )       DIR="$2";        shift 2 ;; ## 参数卡前缀 [type]
-  --method )    method="$2";     shift 2 ;; ## dmu评估模型，PBLUP/GBLUP/ssGBLUP
+  --method )    method="$2";     shift 2 ;; ## dmu评估模型，BLUP/GBLUP/ssGBLUP
   --type )      type="$2";       shift 2 ;; ## 参考群合并方式 blend/union/multi(两性状模型) [blend]
   --GmatM )     GmatM="$2";      shift 2 ;; ## 基因型矩阵构建方式[multi/single]
   --gmat )      gmat="$2";       shift 2 ;; ## 用户提供关系矩阵或逆矩阵(id id value)
@@ -143,7 +143,7 @@ source ${func}
 export PATH=${code}/bin:$PATH
 
 ## 检查需要的程序是否在环境变量中能检索到并且可执行
-check_command plink gmatrix mbBayesAS LD_mean_r2 run_dmu4 run_dmuai
+check_command plink gmatrix mbBayesABLD LD_mean_r2 run_dmu4 run_dmuai
 
 ## 检查需要的脚本文件是否存在且具有执行权限
 check_command $pheMerge $accur_cal $fix_frq_ld_bolck $lava_cubic_bolck $job_pool $func
@@ -645,12 +645,12 @@ if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
     [[ ! -s pedi_merge.txt ]] && echo "pedi_merge.txt not found! " && exit 1
     echo "\$VAR_STR ${add_rf} PGMIX ${invA} ASCII pedi_merge.txt ${gidf} ${tpath}/merge.agrm.id_fmt ${alpha} G-ADJUST" >>${DIR}.DIR
     add_sol=4
-  elif [[ ${method} == "PBLUP" ]]; then
+  elif [[ ${method} == "BLUP" ]]; then
     [[ ! -s pedi_merge.txt ]] && echo "pedi_merge.txt not found! " && exit 1
     echo "\$VAR_STR ${add_rf} PED ${invA} ASCII pedi_merge.txt" >>${DIR}.DIR
     add_sol=4
   else
-    echo "method can only be PBLUP/GBLUP/ssGBLUP! "
+    echo "method can only be BLUP/GBLUP/ssGBLUP! "
     exit 1
   fi
 
@@ -690,13 +690,13 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
       fi
     fi
 
-    ##### MT-BayesAS模型 #####
+    ##### MT-BayesABLD模型 #####
     ############################
     if [[ ${type} == 'multi' ]]; then
       ## 固定效应
       fix_eff=${all_eff%" ${ran_eff}"}
 
-      job_pool_run mbBayesAS \
+      job_pool_run mbBayesABLD \
         --bfile ${bfileM} \
         --phef ${vali_path}/pheno.txt \
         --fix "${fix_eff}" \
@@ -769,9 +769,9 @@ for i in $(seq 0 $((np - 1))); do
     --out ${tpath}/${outf}
 done
 
-#################  BayesAS 模型收敛作图  #################
+#################  BayesABLD 模型收敛作图  #################
 #########################################################
-## BayesAS 模型 收敛作图
+## BayesABLD 模型 收敛作图
 if [[ ${type} == 'multi' ]]; then
   if [[ ${traceplot} ]]; then
     for r in $(seq 1 ${rep}); do

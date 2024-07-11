@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 ## 根据自编的C语言程序计算的mean R2值进行区域划分
 # debug
 # opt <- list(files="breedAsq breedBsq", mapf = "breedAsq.map")

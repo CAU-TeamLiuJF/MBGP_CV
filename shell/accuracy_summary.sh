@@ -111,7 +111,7 @@ for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
 
           ## within population
           wf=${path}/${b}/accur_GBLUP.txt
-          bf=${path}/${b}/accur_BayesAS.txt
+          bf=${path}/${b}/accur_BayesABLD.txt
           # if [[ -s ${wf} ]]; then
           #   sed '1d' ${wf} | awk '{print "within","'${b}'","'${b}'","'${t}'", $0}' >>${out}
           # # else
@@ -133,7 +133,7 @@ for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
                   [[ -s ${wf} ]] && \
                     awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
                   [[ -s ${bf} ]] && \
-                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesAS","'${type}'","'${b}'","'${t}'", $0}' ${bf}
+                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesABLD","'${type}'","'${b}'","'${t}'", $0}' ${bf}
                 } >>${out}
               # else
                 # echo "${accf} not found! "
@@ -156,7 +156,7 @@ for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
                   [[ -s ${wf} ]] && \
                     awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
                   [[ -s ${bf} ]] && \
-                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesAS","'${type}'","'${b}'","'${t}'", $0}' ${bf}
+                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesABLD","'${type}'","'${b}'","'${t}'", $0}' ${bf}
                 } >>${out}
               # else
               #   echo "${accf} not found! "
@@ -164,7 +164,7 @@ for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
             done
           fi
 
-          ## MT-bayesAS
+          ## MT-BayesABLD
           for bin in "${bins_array[@]}"; do
             accf=$(find ${path}/mult* -name "accur*${bin}*${b}.txt" 2>/dev/null)
             [[ ! ${accf} ]] && continue
@@ -176,11 +176,11 @@ for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
               type="${dirPre}${type}"
               if [[ -s ${f} ]]; then
                 {
-                  awk '{print "'${r}'","'${d}'","'${c}'","'mbBayesAS-${bin}'","'${type}'","'${b}'","'${t}'",$0}' ${f}
+                  awk '{print "'${r}'","'${d}'","'${c}'","'mbBayesABLD-${bin}'","'${type}'","'${b}'","'${t}'",$0}' ${f}
                   [[ -s ${wf} ]] && \
                     awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
                   [[ -s ${bf} ]] && \
-                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesAS","'${type}'","'${b}'","'${t}'", $0}' ${bf}
+                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesABLD","'${type}'","'${b}'","'${t}'", $0}' ${bf}
                 } >>${out}
               # else
               #   echo "${f} not found! "

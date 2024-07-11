@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 ## 用于跑完完整数据集和剔除验证群的缩减数据集dmu4后进行准确性计算
 
 # 加载需要的程序包

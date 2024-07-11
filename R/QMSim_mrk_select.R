@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 
 ### liwn 2022-07-05 ###
 ### 根据条件设定在QMSim标记中选择一定数目的标记 ###

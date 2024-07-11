@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 ## Plot LD decay and LD phase correlation based on PLINK's LD results. Note: The process may run slowly due to the large LD result file.
 # debug
 # opt <- list(files="breedAsq breedBsq", mapf = "breedAsq.map")

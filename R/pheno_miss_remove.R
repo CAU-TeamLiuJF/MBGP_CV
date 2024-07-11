@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 ## 将输入的表型文件按照基因型文件个体顺序进行排序
 ## opt <- list(fam='DD_num.fam', pheno='gwas_pca_DD.fam')
 

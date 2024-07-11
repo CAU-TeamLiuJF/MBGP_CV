@@ -1,4 +1,4 @@
-#!/work/apps/tools/conda/minconda3/20230202/bin/Rscript
+#!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 ## MCMC链 作图
 # debug
 # setwd('/BIGDATA2/cau_jfliu_2/liwn/mbGS/Real/YCJY/rmodel/AGE/multi/val1/rep1/YY_fix_0.1_100')
