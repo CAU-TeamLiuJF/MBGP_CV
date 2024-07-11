@@ -17,7 +17,7 @@ configured [Slurm](https://slurm.schedmd.com/documentation.html) Job Management 
 
 ### 1.1 Download compressed package
 
-Download the compressed package containing data, scripts and program files from the link https://github.com/CAU-TeamLiuJF/mbBayesABLD/archive/refs/heads/main.zip, and then decompress it to the specified path. Assuming that the compressed package downloaded from the local computer is copied to the remote server /public/home/liujf/liwn/download path, you can then use the following command to decompress the folder to the /public/home/liujf/liwn/code/GitHub path:
+Download the compressed package containing data, scripts and program files from the link [https://github.com/CAU-TeamLiuJF/mbBayesABLD/archive/refs/heads/main.zip](https://github.com/CAU-TeamLiuJF/mbBayesABLD/archive/refs/heads/main.zip), and then decompress it to the specified path. Assuming that the compressed package downloaded from the local computer is copied to the remote server /public/home/liujf/liwn/download path, you can then use the following command to decompress the folder to the /public/home/liujf/liwn/code/GitHub path:
 
 ```bash
 cd /public/home/liujf/liwn/download
@@ -109,7 +109,7 @@ Liweining li.wn@qq.com
 
 ### 1.1 下载压缩包 
 
-通过链接https://github.com/CAU-TeamLiuJF/mbBayesABLD/archive/refs/heads/main.zip下载包含数据、脚本和程序文件的压缩包，然后解压到指定路径中。假设将本地电脑下载的压缩包复制到远程服务器/public/home/liujf/liwn/download路径中，然后可用以下命令将文件夹解压至/public/home/liujf/liwn/code/GitHub路径：
+通过链接[https://github.com/CAU-TeamLiuJF/mbBayesABLD/archive/refs/heads/main.zip](https://github.com/CAU-TeamLiuJF/mbBayesABLD/archive/refs/heads/main.zip)下载包含数据、脚本和程序文件的压缩包，然后解压到指定路径中。假设将本地电脑下载的压缩包复制到远程服务器/public/home/liujf/liwn/download路径中，然后可用以下命令将文件夹解压至/public/home/liujf/liwn/code/GitHub路径：
 
 ```bash
 cd /public/home/liujf/liwn/download
