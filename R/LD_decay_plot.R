@@ -1,7 +1,24 @@
 #!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
-## Plot LD decay and LD phase correlation based on PLINK's LD results. Note: The process may run slowly due to the large LD result file.
-# debug
-# opt <- list(files="breedAsq breedBsq", mapf = "breedAsq.map")
+
+########################################################################################################################
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Plot LD decay and LD phase correlation based on PLINK's LD results. Note: The process may run slowly
+## due to the large LD result file.
+##
+##
+## Usage: ./LD_decay_plot.R --files "/path/to/files/" ...(Please refer to --help for detailed parameters)
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
+
 
 ## Load required packages
 cat("Loading required packages... \n\n")
@@ -38,7 +55,7 @@ opt <- getopt(spec = spec)
 
 ## Check parameters
 if (!is.null(opt$help) || is.null(opt$files)) {
-  cat(paste(getopt(spec = spec, usage = TRUERUE), "\n"))
+  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
@@ -89,7 +106,7 @@ for (i in 1:np) {
   ## Read and process file
   datai <- fread(files[i], select = cols)
   names(datai)[value_cols] <- pop_name[i]
-  
+
   ## Remove the markers with pos of 0
   datai <- subset(datai, !(BP_A == 0 | BP_B == 0))
 

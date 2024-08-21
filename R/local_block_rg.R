@@ -1,7 +1,25 @@
 #!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
-## 根据提供的plink二进制文件估计LD独立区域 ##
 
-## 命令行参数
+########################################################################################################################
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Determine the LD independent region based on the provided plink binary file
+##
+##
+## Usage: ./local_block_rg.R --summ1 "/path/to/summ1/file" ...(Please refer to --help for detailed parameters)
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
+
+
+## Command line arguments
 spec <- matrix(
   c(
     "summ1",  "1", 1, "character", "[Required] GWAS descriptive statistics for trait A",
@@ -21,32 +39,32 @@ spec <- matrix(
 )
 opt <- getopt::getopt(spec = spec)
 
-## 检查参数
+## Check parameters
 needed <- c(opt$summ1, opt$summ2, opt$block, opt$nA, opt$nB, opt$bfile)
 if (!is.null(opt$help) || length(needed) < 6) {
-  cat(paste(getopt::getopt(spec = spec, usage = TRUERUE), "\n"))
+  cat(paste(getopt::getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
-## 加载需要的程序包
+## Load required packages
 suppressPackageStartupMessages(library("data.table"))
 suppressPackageStartupMessages(library("LAVA"))
 suppressPackageStartupMessages(library("dplyr"))
 
-## 默认参数
+## Default parameters
 if (is.null(opt$traitA)) opt$traitA <- "traitA"
 if (is.null(opt$traitB)) opt$traitB <- "traitB"
 if (is.null(opt$univ)) opt$univ <- 0.05
 if (is.null(opt$out)) opt$out <- "ld_block_rg.txt"
 
-## 检查文件是否存在
+## Check if files exist
 if (!all(file.exists(opt$summ1, opt$summ2, opt$block, paste0(opt$bfile, ".bim")))) {
   cat("One of the following files does not exist:\n")
   cat(opt$summ1, opt$summ2, opt$block, paste0(opt$bfile, ".bim"), sep = "\n")
   quit()
 }
 
-## 对提供的文件进行列重命名
+## Rename columns in the provided files
 summ1 <- fread(opt$summ1)
 summ2 <- fread(opt$summ2)
 block <- fread(opt$block)
@@ -64,11 +82,11 @@ names(summ1)[rename_col] <- names_dict[names(summ1)[rename_col], ]
 rename_col <- which(names(summ2) %in% rownames(names_dict))
 names(summ2)[rename_col] <- names_dict[names(summ2)[rename_col], ]
 
-## 将文件中"N"列的缺失基因型个体改为非缺失基因型个体
+## Modify the "N" column in the files to reflect non-missing genotyped individuals
 summ1$N <- opt$nA - summ1$N
 summ2$N <- opt$nB - summ2$N
 
-## 写出文件
+## Write out files
 tmp_dir <- paste0(getwd(), "/rg_tmp", as.integer(runif(1) * 10000))
 dir.create(tmp_dir)
 write.table(summ1, file = paste0(tmp_dir, "/", opt$traitA, ".sumstats.txt"), row.names = FALSE, quote = FALSE)
@@ -81,7 +99,7 @@ info <- c(
 )
 writeLines(info, paste0(tmp_dir, "/input.info.txt"))
 
-## 输入文件信息
+## Input file information
 input <- process.input(
   input.info.file = paste0(tmp_dir, "/input.info.txt"),
   sample.overlap.file = NULL,
@@ -96,7 +114,7 @@ nbin <- nrow(loci)
 #### ANALYSE ####
 print(paste("Starting LAVA analysis for", nbin, "loci..."))
 results <- NULL
-## 计算rg值
+## Calculate rg values
 for (i in 1:nbin) {
   # process locus
   locus <- process.locus(loci[i, ], input)
@@ -132,10 +150,10 @@ for (i in 1:nbin) {
   }
 }
 
-## 将NA设为0
+## Set NA to 0
 results$rho[is.na(results$rho)] <- 0
 
-## 将两个性状都在该区间显示出显著遗传力的区间打上标记
+## Mark regions where both traits show significant heritability
 results$h2.p.phen1[is.na(results$h2.p.phen1)] <- 1.0
 results$h2.p.phen2[is.na(results$h2.p.phen2)] <- 1.0
 phen1_sig <- results$h2.p.phen1 < opt$univ
@@ -145,17 +163,17 @@ results$h2_sig[phen1_sig & phen2_sig] <- "TRUE"
 cat("A total of", sum(phen1_sig), "blocks with significant heritability were identified in", opt$traitA, "\n")
 cat("A total of", sum(phen2_sig), "blocks with significant heritability were identified in", opt$traitB, "\n")
 
-## 鉴定到显著rg的区间打上标签
+## Mark regions with significant rg
 results$p[is.na(results$p)] <- 1.0
 rg_sig <- results$p < opt$univ
 results$hg_sig <- "FALSE"
 results$hg_sig[rg_sig] <- "TRUE"
 
-## 输出文件
+## Output file
 cat("A total of", sum(rg_sig), "blocks with significant genetic correlation were identified.\n")
 write.table(results, opt$out, row.names = FALSE, quote = FALSE, sep = "\t")
 
-## 删除中间文件
+## Delete intermediate files
 if (is.null(opt$keep)) {
   cat(tmp_dir, "has been deleted.\n")
   unlink(tmp_dir, recursive = TRUE)

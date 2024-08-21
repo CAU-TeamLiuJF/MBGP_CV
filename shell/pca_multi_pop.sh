@@ -1,18 +1,24 @@
 #!/usr/bin/bash
 
 ########################################################################################################################
-## 版本: 1.1.0
-## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-07-05
-## 
-## 对提供的任意多个群体进行PCA分析并作图
-## 
-## 使用: pca_multi_pop.sh --help
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
 ##
-## 依赖软件/环境: 
+## Function：
+## Perform PCA analysis and plot for any number of breeds provided
+##
+##
+## Usage:
+## ./pca_multi_pop.sh --pre_list "/path/to/plink/binary/files/prefix" ...(Please refer to --help for detailed parameters)
+##
+## Dependent on software/environment:
 ##  1. R
 ##  2. plink/1.9
-##  3. 其他R语言和Bash脚本
+##  3. Other R languages and Bash scripts
+##
 ##
 ## License:
 ##  This script is licensed under the GPL-3.0 License.
@@ -20,30 +26,30 @@
 ########################################################################################################################
 
 
-###################  参数处理  #####################
+###################  Parameter processing  #####################
 ####################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
-## 参数名
+## Parse arguments
 TEMP=$(getopt -o h --long pre_list:,fids:,out:,nchr:,help,fid,plot \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
-## 解析参数
+##  parse parameter
 while true; do
   case "$1" in
-          --pre_list )   pre_list="$2";  shift 2 ;;  ## plink文件前缀，如"/public/home/popA /public/home/popB"
-          --fids )       fids="$2"; 	   shift 2 ;;	 ## 品种（群体）标识符，如"popA popB"
-          --nchr )       nchr="$2" ;     shift 2 ;;  ## 染色体数目 [30]
-          --out )        out="$2" ;      shift 2 ;;  ## 输出文件名
-          --fid )        fid=true;       shift   ;;  ## bfile中提供了品种（群体）标识符(即fid)
-          --plot )       plot=true;      shift   ;;  ## 根据PCA结果作图
+          --pre_list )   pre_list="$2";  shift 2 ;;  ## plink file prefix, e.g., "/public/home/popA /public/home/popB"
+          --fids )       fids="$2";      shift 2 ;;  ## Breed (population) identifiers, e.g., "popA popB"
+          --nchr )       nchr="$2" ;     shift 2 ;;  ## Number of chromosomes [30]
+          --out )        out="$2" ;      shift 2 ;;  ## Output file name
+          --fid )        fid=true;       shift   ;;  ## Breed (population) identifiers provided in the bfile (i.e., fid)
+          --plot )       plot=true;      shift   ;;  ## Plot based on PCA results
     -h | --help )        grep " shift " $0 && exit 1 ;;
     -- ) shift; break ;;
     * ) shift; break ;;
   esac
 done
 
-## 脚本所在文件夹
+## Directory of the script
 if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
@@ -51,27 +57,27 @@ else
   code=$(dirname "$script_path")
 fi
 
-## 脚本
+## Scripts
 pca_plot=${code}/R/PCA_plot.R
 func=${code}/shell/function.sh
 
-## 日志文件夹
+## path to log information
 logp=${code}/log
 
-## 加载自定义函数
+## Load custom functions
 [[ ! -s ${func} ]] && echo "Error: ${func} not found! " && exit 5
 source ${func}
 
-## 检查需要的程序是否在环境变量中能检索到并且可执行
+## Check if the required programs are available in the environment and executable
 check_command plink
 
-## 检查必要参数
+## Check required parameters
 [[ ! ${pre_list} ]] && echo "Open script $0 to view instructions" && exit 1
 
-## 默认参数
+## Default parameters
 nchr=${nchr:="30"}
 
-## 只提供了一个文件，则根据fam文件中的fid进行分组
+## If only one file is provided, group by fid in the fam file
 files_num=$(echo ${pre_list} | tr " " "\n" | wc -l)
 if [[ ${files_num} -le 1 ]]; then
   unset fids
@@ -80,18 +86,18 @@ if [[ ${files_num} -le 1 ]]; then
     exit 1
   fi
 
-  ## 检查文件是否存在
+  ## Check if the file exists
   check_plink "${pre_list}" ${nchr}
 
-  ## plink基因型文件中的家系ID
+  ## Family ID in the plink genotype file
   fid_uniq=$(awk '{print $1}' ${pre_list}.fam | sort | uniq)
 
-  ## 提取不同品种的基因型信息
+  ## Extract genotype information for different breeds
   for name in ${fid_uniq}; do
-    ## 家系ID
+    ## Family ID
     awk ${name} >${name}_fid.txt
 
-    ## 提取指定家系ID的个体
+    ## Extract individuals with specified family ID
     plink \
       --bfile ${pre_list} \
       --keep-fam ${name}_fid.txt \
@@ -104,21 +110,21 @@ if [[ ${files_num} -le 1 ]]; then
   # Name_list="${pre_list[*]}"
 fi
 
-## 获取每个群体的标识符（family id）
+## Get the identifier (family id) for each population
 # pre_list=("${pre_list[@]}")
 IFS=' ' read -ra pre_list <<< "${pre_list[@]}"
 index=0
-for prefix in "${pre_list[@]}"; do # prefix=${pre_list[0]}
+for prefix in "${pre_list[@]}"; do
   ((index++))
 
-  ## 检查文件是否存在
+  ## Check if the file exists
   check_plink "${prefix}" ${nchr}
 
-  ## 群体id
+  ## Population id
   if [[ ${fids[*]} ]]; then
     fidi=$(echo "${fids[*]}" | cut -d ' ' -f ${index})
   else
-    ## 提取第一行iid和fid，判断fid是否用iid表示或全为0，是的话则重新给个fid（如pop1）
+    ## Extract the first row's iid and fid, and check if fid is represented by iid or all zeros. If so, assign a new fid (e.g., pop1)
     iid=$(head -n 1 ${prefix}.fam | awk '{print $2}')
     fidi=$(head -n 1 ${prefix}.fam | awk '{print $1}')
     if [[ ${fidi} == "${iid}" || ${fidi} == '0' ]]; then
@@ -127,13 +133,13 @@ for prefix in "${pre_list[@]}"; do # prefix=${pre_list[0]}
     # Name_list="${Name_list} ${fidi}"
   fi
 
-  ## 输出iid和fid匹配表
+  ## Output the mapping table of iid and fid
   if [[ ${index} -eq 1 ]]; then
     awk '{print $2,"'${fidi}'"}' ${prefix}.fam >iid_fid_pca.txt
   else
     awk '{print $2,"'${fidi}'"}' ${prefix}.fam >>iid_fid_pca.txt
 
-    ## 合并群体需要的文件名列表
+    ## File list needed for merging populations
     if [[ ${index} -ge 2 ]]; then
       echo ${prefix}.bed ${prefix}.bim ${prefix}.fam >>merge_list.txt
     else
@@ -142,10 +148,10 @@ for prefix in "${pre_list[@]}"; do # prefix=${pre_list[0]}
   fi
 done
 
-## 输出文件名
+## Output file name
 [[ ! ${out} ]] && out=$(echo "${pre_list[@]}" | tr " " "_")_pca.txt
 
-## 合并所有群体plink文件
+## Merge all population plink files
 prefix1=$(echo "${pre_list[@]}" | cut -d ' ' -f 1)
 num=$(echo "${pre_list[@]}" | wc -w)
 plink \
@@ -154,20 +160,20 @@ plink \
   --chr-set ${nchr} \
   --make-bed --out pop${num}_merge >${logp}/plink_pca_merge.log
 
-## 存在多等位基因位点
+## Multiple allele sites exist
 if [[ $? -ne 0 ]]; then
   echo "please remove all offending variants (merged.missnp) in all populations"
   exit 2
 fi
 
-## pca计算
+## PCA calculation
 plink \
   --bfile pop${num}_merge \
   --chr-set ${nchr} \
   --pca 3 header \
   --out pop${num}_merge >${logp}/plink_pca.log
 
-## 匹配群体标识符
+## Match population identifiers
 if [[ ! ${fid} ]]; then
   sort -k 1n iid_fid_pca.txt -o iid_fid_pca.txt2
   sed '1d' pop${num}_merge.eigenvec | sort -k 2n > pop${num}_merge.eigenvec2
@@ -176,12 +182,12 @@ else
   cp pop${num}_merge.eigenvec "${out}" 
 fi
 
-## 作图
+## Plotting
 if [[ ${plot} ]]; then
   $pca_plot --eigv ${out}
 fi
 
-## 删除中间文件
+## Delete intermediate files
 rm pop${num}_merge.*
 rm merge_list.*
 rm iid_fid_pca.*

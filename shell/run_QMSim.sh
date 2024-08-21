@@ -1,71 +1,77 @@
 #!/bin/bash
-#SBATCH --job-name=accuracy
+#SBATCH --job-name=QMSim
 
 ########################################################################################################################
-## 版本: 1.1.0
-## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-07-05
-## 
-## 根据指定的参数，生成QMSim软件所需的参数文件*.prm，并运行QMSim软件进行群体模拟
-## 
-## 使用: run_QMSim.sh --help
-## 
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Generate the required parameter file *. prm for QMSim based on the specified parameters, and run QMSim for population simulation
+##
+##
+## Usage:
+## ./run_QMSim.sh --proj "/path/to/project" ...(Please refer to --help for detailed parameters)
+##
+##
 ## License:
 ##  This script is licensed under the GPL-3.0 License.
 ##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
 ########################################################################################################################
 
 
-###################  参数处理  #####################
+###################  Parameter processing  #####################
 ####################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
-## 参数名
+## Parse arguments
 TEMP=$(getopt -o h --long proj:,breeds:,thread:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,nchr:,nmloc:,nqloci:,QMSim_h2:,QMSim_qtlh2:,QMSim_rep:,bottleneck:,code:,prmpath:,sim_dir:,logf:,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
-## 解析参数
+##  parse parameter
 while true; do
   case "$1" in
-    --proj )         proj="$2";         shift 2 ;; ## 项目目录 [必要参数]
-    --breeds )       breeds="$2";       shift 2 ;; ## 群体/品种标识符，如'YY DD' ["A B"]
-    --thread )       thread="$2";       shift 2 ;; ## QMSim运行时的线程数 [10]
-    --seg_gens )     seg_gens="$2";     shift 2 ;; ## 各品种从历史群体中分离后，分离的世代数 ["40 10"]
-    --extentLDs )    extentLDs="$2";    shift 2 ;; ## 各品种最后稳定LD经历的世代数 ["10 10"]
-    --last_males )   last_males="$2";   shift 2 ;; ## 各品种最后一个阶段的群体中的雄性个体数 ["100 10"]
-    --last_females ) last_females="$2"; shift 2 ;; ## 各品种最后一个阶段的群体中的雌性个体数 ["500 50"]
-    --founder_sel )  founder_sel="$2";  shift 2 ;; ## 各品种从历史群体中选择个体的依据 ["tbv /h,tbv /l"]
-    --seg_sel )      seg_sel="$2";      shift 2 ;; ## 各品种在世代选择阶段的个体选留依据 ["phen /h,phen /l"]
-    --last_sel )     last_sel="$2";     shift 2 ;; ## 各品种在LD稳定阶段的个体选留依据 ["rnd,rnd"]
-    --last_litters ) last_litters="$2"; shift 2 ;; ## 各品种在LD稳定阶段的每窝个体数 ["10 10"]
-    --geno_gen )     geno_gen="$2";     shift 2 ;; ## 输出基因型个体的世代 [8-10]
-    --nchr )         nchr="$2";         shift 2 ;; ## 染色体数目 [18]
-    --nmloc )        nmloc="$2";        shift 2 ;; ## 每条染色体上的标记数 [300000]
-    --nqloci )       nqloci="$2";       shift 2 ;; ## 每条染色体上的QTL数 [100]
-    --QMSim_h2 )     QMSim_h2="$2";     shift 2 ;; ## 性状的广义遗传力大小 [0.3]
-    --QMSim_qtlh2 )  QMSim_qtlh2="$2";  shift 2 ;; ## 性状的狭义遗传力大小 [0.3]
-    --QMSim_rep )    QMSim_rep="$2";    shift 2 ;; ## QMSim模拟重复次数 [1]
-    --bottleneck )   bottleneck="$2";   shift 2 ;; ## 历史群体模拟中的瓶颈阶段个体数 [250]
-    --logf )         logf="$2";         shift 2 ;; ## 日志文件名 [QMSim_${sim_dir}.txt]
-    --code )         code="$2";         shift 2 ;; ## 脚本文件所在目录，如/BIGDATA2/cau_jfliu_2/liwn/code [自动获取]
-    --prmpath )      prmpath="$2";      shift 2 ;; ## 参数卡模板文件所在路径 [${code}/prm]
-    --sim_dir )      sim_dir="$2";      shift 2 ;; ## 模拟结果文件输出文件夹名，注意该文件夹不能已存在 [rep1]
+    --proj )         proj="$2";         shift 2 ;; ## Project directory [required parameter]
+    --breeds )       breeds="$2";       shift 2 ;; ## Population/Breed identifiers, e.g., 'YY DD' ["A B"]
+    --thread )       thread="$2";       shift 2 ;; ## Number of threads for running QMSim [10]
+    --seg_gens )     seg_gens="$2";     shift 2 ;; ## Number of generations after separation from the historical population for each breed ["40 10"]
+    --extentLDs )    extentLDs="$2";    shift 2 ;; ## Number of generations in the last stable LD phase for each breed ["10 10"]
+    --last_males )   last_males="$2";   shift 2 ;; ## Number of males in the population in the last phase for each breed ["100 10"]
+    --last_females ) last_females="$2"; shift 2 ;; ## Number of females in the population in the last phase for each breed ["500 50"]
+    --founder_sel )  founder_sel="$2";  shift 2 ;; ## Criteria for selecting individuals from the historical population for each breed ["tbv /h,tbv /l"]
+    --seg_sel )      seg_sel="$2";      shift 2 ;; ## Criteria for selecting individuals during the generation selection phase for each breed ["phen /h,phen /l"]
+    --last_sel )     last_sel="$2";     shift 2 ;; ## Criteria for selecting individuals during the LD stabilization phase for each breed ["rnd,rnd"]
+    --last_litters ) last_litters="$2"; shift 2 ;; ## Number of individuals per litter during the LD stabilization phase for each breed ["10 10"]
+    --geno_gen )     geno_gen="$2";     shift 2 ;; ## Generation(s) to output genotyped individuals [8-10]
+    --nchr )         nchr="$2";         shift 2 ;; ## Number of chromosomes [18]
+    --nmloc )        nmloc="$2";        shift 2 ;; ## Number of markers per chromosome [300000]
+    --nqloci )       nqloci="$2";       shift 2 ;; ## Number of QTLs per chromosome [100]
+    --QMSim_h2 )     QMSim_h2="$2";     shift 2 ;; ## Broad-sense heritability of the trait [0.3]
+    --QMSim_qtlh2 )  QMSim_qtlh2="$2";  shift 2 ;; ## Narrow-sense heritability of the trait [0.3]
+    --QMSim_rep )    QMSim_rep="$2";    shift 2 ;; ## Number of QMSim simulation replicates [1]
+    --bottleneck )   bottleneck="$2";   shift 2 ;; ## Population size during the bottleneck phase in the historical population simulation [250]
+    --logf )         logf="$2";         shift 2 ;; ## Log file name [QMSim_${sim_dir}.txt]
+    --code )         code="$2";         shift 2 ;; ## Directory where script files are located, e.g., /BIGDATA2/cau_jfliu_2/liwn/code [automatically obtained]
+    --prmpath )      prmpath="$2";      shift 2 ;; ## Path to the parameter template files [${code}/prm]
+    --sim_dir )      sim_dir="$2";      shift 2 ;; ## Name of the output folder for simulation results; this folder should not already exist [rep1]
   -h | --help)    grep ";; ##" $0 | grep -v help && exit 1 ;;
   -- ) shift; break ;;
   * ) shift; break ;;
   esac
 done
 
-## 检查必要参数是否提供
+## Check the required parameters
 if [[ ! -d ${proj} ]]; then
   echo "${proj} not found! "
   exit 1
 fi
 
-## 避免执行R脚本时的警告("ignoring environment value of R_HOME")
+## Avoid warnings when running R scripts ("ignoring environment value of R_HOME")
 unset R_HOME
 
-## 脚本所在文件夹
+## Directory of the script
 if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
@@ -73,10 +79,10 @@ else
   code=$(dirname "$script_path")
 fi
 
-## 将程序路径加到环境变量中
+## Add the program path to the environment variable
 export PATH=${code}/bin:$PATH
 
-## 路径/脚本
+## Path/Scripts
 func=${code}/shell/function.sh
 gind_sel=${code}/R/geno_individuals_select.R
 PCA_cal=${code}/shell/pca_multi_pop.sh
@@ -86,22 +92,22 @@ LD_cor=${code}/R/LD_decay_plot.R
 mrk_sel=${code}/R/QMSim_mrk_select.R
 block_LD=${code}/R/block_LD_cor.R
 
-## 参数卡模板文件
+## Parameter card template file
 prm_hist=templete_gloabal_history.prm
 prm_sub=templete_subpopulation.prm
 prm_geno=templete_genome_output.prm
 
-## 加载自定义函数
+## Load custom functions
 [[ ! -s ${func} ]] && echo "Error: ${func} not found! " && exit 5
 source ${func}
 
-## 检查需要的程序是否在环境变量中能检索到并且可执行
+## Check if the required program can be retrieved and executed in the environment variables
 check_command plink QMSim
 
-## 检查需要的脚本文件是否存在且具有执行权限
+## Check if the required script files exist and have execution permissions
 check_command $gind_sel $PCA_cal $geno_dist $PCA_plot $LD_cor $mrk_sel $block_LD
 
-## 默认参数
+## Default parameters
 breeds=${breeds:="A B"}
 sim_dir=${sim_dir:=rep1}
 QMSim_rep=${QMSim_rep:="1"}
@@ -116,11 +122,11 @@ thread=${thread:="10"}
 prmpath=${prmpath:="${code}/prm"}
 logf=${logf:="QMSim_${sim_dir}.txt"}
 
-## 获取品种个数
+## Obtain the number of breeds
 read -ra breeds <<<"$breeds"
 np=${#breeds[@]}
 
-## 由品种数确定的默认参数
+## Default parameters determined by the number of breeds
 founder_sel=${founder_sel:=$(printf "%${np}s" | sed "s/ /rnd,/g" | sed 's/,$//')}
 seg_sel=${seg_sel:=${founder_sel}}
 last_sel=${last_sel:=${founder_sel}}
@@ -130,7 +136,7 @@ last_males=${last_males:=$(printf "%${np}s" | sed "s/ /40 /g" | sed 's/ *$//')}
 last_females=${last_females:=$(printf "%${np}s" | sed "s/ /200 /g" | sed 's/ *$//')}
 seg_gens=${seg_gens:=$(printf "%${np}s" | sed "s/ /40 /g" | sed 's/ *$//')}
 
-## 解析参数
+##  parse parameter
 read -ra seg_gens <<<"$seg_gens"
 read -ra last_males <<<"$last_males"
 read -ra last_females <<<"$last_females"
@@ -144,7 +150,7 @@ mapfile -t gid_gen < <(seq ${geno_gen:0:1} ${geno_gen:2:3})
 gen_all=${geno_gen:2:3}
 rand=$RANDOM
 
-## 查看参数卡模板文件是否存在
+## Check if the parameter card template file exists
 if [[ ! -d ${prmpath} ]]; then
   echo "${prmpath} not exists! "
   exit 5
@@ -154,17 +160,17 @@ else
   done
 fi
 
-###################### 模拟群体参数卡 ######################
+###################### Parameter card of simulated population  ######################
 cd ${prmpath} || exit
 
-## 历史群体
+## History population 
 sed "s/%nthread%/${thread}/" $prm_hist >temp_${rand}.prm
 sed -i "s/%rep%/${QMSim_rep}/" temp_${rand}.prm
 sed -i "s/%h2%/${QMSim_h2}/" temp_${rand}.prm
 sed -i "s/%qtlh2%/${QMSim_qtlh2}/" temp_${rand}.prm
 sed -i "s/%bottleneck%/${bottleneck}/" temp_${rand}.prm
 
-## 子群体
+## Subpopulation
 for i in $(seq 0 $((np - 1))); do
   sed "s/%pop%/${breeds[${i}]}/" $prm_sub >${breeds[${i}]}.prm
   sed -i "s#%founder_select%#${founder_sel[${i}]}#" ${breeds[${i}]}.prm
@@ -180,33 +186,33 @@ for i in $(seq 0 $((np - 1))); do
   sed -i "s/%geno_gen%/${gid_gen[*]}/g" ${breeds[${i}]}.prm
   sed -i "s/%freq_gen%/${gid_gen[*]}/g" ${breeds[${i}]}.prm
 
-  ## 合并到主参数文件
+  ## Merge into the main parameter file
   cat ${breeds[${i}]}.prm >>temp_${rand}.prm
   rm ${breeds[${i}]}.prm
 done
 
-## 基因组和输出参数
+## Genome and output parameters
 sed "s/%nmloci%/${nmloc}/" $prm_geno >genome.prm
 sed -i "s/%nchr%/${nchr}/" genome.prm
 sed -i "s/%nqloci%/${nqloci}/" genome.prm
 
-## 最终模拟参数卡
+## Final simulation parameter card
 cat genome.prm >>temp_${rand}.prm
 rm genome.prm
 
-## 文件路径
+## Project directory
 cd ${proj} || exit 5
 
-## 输出文件夹
+## Output parameter card
 sed "s#%out_dir%#${sim_dir}#" ${prmpath}/temp_${rand}.prm >QMSim.prm
 rm ${prmpath}/temp_${rand}.prm
 
-## QMSim模拟程序运行
+## QMSim simulation program running
 QMSim QMSim.prm >> ${logf} 2>&1
 
-## 更换工作路径
+## Change working path
 rm QMSim.prm
 cd ${proj}/${sim_dir} || exit
 
-## 保存QMSim模拟种子
+## Save QMSim simulation seeds
 cp seed QMSim_${sim_dir}_seed.prv

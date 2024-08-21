@@ -1,12 +1,30 @@
 #!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
-## 计算群体间的distance均值
 
-## 加载需要的程序包
+########################################################################################################################
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Calculate the mean distance between breeds
+##
+##
+## Usage: ./mean_distance.R --prefix "/plink/binary/file/prefix" ...(Please refer to --help for detailed parameters)
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
+
+
+### Load packages required
 cat("Loading required packages... \n\n")
 suppressPackageStartupMessages(library("getopt"))
 suppressPackageStartupMessages(library("data.table"))
 
-## 参数列表
+## parameters list
 spec <- matrix(
   c(
     "prefix", "f", 1, "character", "[Required] mdist file path\n",
@@ -18,16 +36,16 @@ spec <- matrix(
 )
 opt <- getopt(spec = spec)
 
-## 检查参数
+## Check parameters
 if (!is.null(opt$help) || is.null(opt$prefix)) {
-  cat(paste(getopt(spec = spec, usage = TRUERUE), "\n"))
+  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
-## 默认参数
+## Default parameters
 if (is.null(opt$out)) opt$out <- "mdist_summary"
 
-## 文件名
+## File name
 dist_file <- paste0(opt$prefix, ".mdist")
 if (is.null(opt$indexf)) {
   id_file <- paste0(opt$prefix, ".mdist.id")
@@ -35,7 +53,7 @@ if (is.null(opt$indexf)) {
   id_file <- opt$indexf
 }
 
-## distance距离矩阵
+## Distance matrix
 if (file.exists(dist_file)) {
   mdist <- fread(dist_file)
   mdist <- as.matrix(mdist)
@@ -53,7 +71,7 @@ if (file.exists(id_file)) {
   quit()
 }
 
-## 检查品种id合理性
+## Check the rationality of the breed ID
 fids <- unique(id$fid)
 if (nrow(id) != nrow(mdist)) {
   cat("The number of id is not equal to the number of rows in mdist file!\n")
@@ -66,7 +84,7 @@ if (nrow(id) != nrow(mdist)) {
   quit()
 }
 
-## 计算均值
+## Calculate the mean
 mean <- matrix(NA, nrow = length(fids), ncol = length(fids))
 for (i in seq_len(length(fids))) {
   for (j in 1:i) {
@@ -80,11 +98,11 @@ for (i in seq_len(length(fids))) {
   }
 }
 
-## 命名
+## rename
 colnames(mean) <- fids
 rownames(mean) <- fids
 
-## 输出
+## Output
 output_name <- paste0(opt$out, ".csv")
 write.csv(mean, output_name, row.names = TRUE, na = "")
 

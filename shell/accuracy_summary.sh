@@ -1,8 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=accuracy
 
 ########################################################################################################################
-## Version: 1.1.1
+## Version: 1.3.0
 ## Author: Weining Li liwn@cau.edu.cn
 ## Date: 2023-07-05
 ## 
@@ -17,10 +16,10 @@
 
 
 ###################  Parameter processing  #####################
-####################################################
+################################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## Parameters
-TEMP=$(getopt -o h --long code:,proj:,breeds:,rep:,dist:,cor:,traits:,bin:,dirPre:,out:,help \
+TEMP=$(getopt -o h --long proj:,breeds:,rep:,dist:,cor:,traits:,bin:,dirPre:,out:,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
@@ -35,7 +34,6 @@ while true; do
     --cor )      cor="$2";      shift 2 ;; ## Additive genetic correlation size [""]
     --dirPre )   dirPre="$2";   shift 2 ;; ## Extra prefix for EBV folder [""]
     --bin )      bins="$2";     shift 2 ;; ## Block partitioning methods for multi-breed genomic prediction, fix/frq/ld/lava/cubic ["fix lava cubic"]
-    --code )     code="$2";     shift 2 ;; ## Scripts directory, e.g., /BIGDATA2/cau_jfliu_2/liwn/code [NULL]
     --out )      out="$2";      shift 2 ;; ## Output filename for accuracy [accuracy_$date.txt]
   -h | --help)    grep ";; ##" $0 | grep -v help && exit 1 ;;
   -- ) shift; break ;;
@@ -58,14 +56,6 @@ today=$(date +%Y%m%d)
 ## Suppress warnings when executing R scripts("ignoring environment value of R_HOME")
 unset R_HOME
 
-## Check the scripts directory
-if [[ ${code} ]]; then
-  [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
-else
-  script_path=$(dirname "$(readlink -f "$0")")
-  code=$(dirname "$script_path")
-fi
-
 ## Default parameters
 out=${out:=${proj}/accuracy_${today}.txt}
 bins=${bins:="fix lava cubic"}
@@ -84,10 +74,10 @@ read -ra dists_array <<<"$dist"
 read -ra cors_array <<<"$cor"
 
 ############## Accuracy results statistics (different combinations) ##########
-################################################
-echo "Simulation_repeats correlation_distribution correlation model reference_population breed trait number_of_repeats number_of_cross-validation_folds accuracy unbiasedness rank_correlation validation_population_size" >${out}
-for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
-  for r in "${reps_array[@]}"; do # r=${reps_array[0]};d=${dists_array[0]};c=${cors_array[0]}
+##############################################################################
+echo "Simulation_repeats correlation_distribution correlation prediction_type model reference_population breed trait number_of_repeats number_of_cross-validation_folds accuracy unbiasedness rank_correlation validation_population_size" >${out}
+for t in "${traits_array[@]}"; do
+  for r in "${reps_array[@]}"; do
     for d in "${dists_array[@]}"; do
       for c in "${cors_array[@]}"; do
         for b in "${breeds_array[@]}"; do
@@ -111,29 +101,36 @@ for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
 
           ## within population
           wf=${path}/${b}/accur_GBLUP.txt
-          bf=${path}/${b}/accur_BayesABLD.txt
+          bf=${path}/${b}/accur_mbBayesAB.txt
           # if [[ -s ${wf} ]]; then
           #   sed '1d' ${wf} | awk '{print "within","'${b}'","'${b}'","'${t}'", $0}' >>${out}
           # # else
           #   # echo "${accf} not found! "
           # fi
 
-          ## Merge single traits
-          accf=$(find ${path} -path "*/blen*/*" -name "accur_GBLUP*${b}*txt" 2>/dev/null)
+          ## single-trait joint prediction models
+          accf=$(find ${path} -path "*/singl*/*" -name "accur_*${b}.txt" 2>/dev/null)
           if [[ ${accf} ]]; then
             # accf=${path}/blend/accur_GBLUP_${b}.txt
-            for f in ${accf}; do # f=${accf[0]}
+            for f in ${accf}; do
               if [[ -s ${f} ]]; then
-                ## Filename
-                type=$(dirname ${f})
-                type=$(basename ${type})
-                type=${type/blend_/}
+                ## reference populations
+                ref=$(dirname ${f})
+                ref=$(basename ${ref})
+                ref=${ref/single_/}
+
+                ## model
+                model=$(basename ${f})
+                model=${model/accur_/}
+                model=${model/_${b}.txt/}
+
+                ## print to file
                 {
-                  awk '{print "'${r}'","'${d}'","'${c}'","b-GBLUP","'${type}'","'${b}'","'${t}'",$0}' ${f}
+                  awk '{print "'${r}'","'${d}'","'${c}'","single","'${model}'","'${ref}'","'${b}'","'${t}'",$0}' ${f}
                   [[ -s ${wf} ]] && \
-                    awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
+                    awk '{print "'${r}'","'${d}'","'${c}'","within","w-GBLUP","'${ref}'","'${b}'","'${t}'", $0}' ${wf}
                   [[ -s ${bf} ]] && \
-                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesABLD","'${type}'","'${b}'","'${t}'", $0}' ${bf}
+                    awk '{print "'${r}'","'${d}'","'${c}'","within","w-mbBayesAB","'${ref}'","'${b}'","'${t}'", $0}' ${bf}
                 } >>${out}
               # else
                 # echo "${accf} not found! "
@@ -141,52 +138,35 @@ for t in "${traits_array[@]}"; do # t=${traits_array[0]};b=${breeds_array[0]}
             done
           fi
 
-          ## Merge muti-traits GBLUP
-          accf=$(find ${path} -path "*/unio*/*" -name "accur_GBLUP*${b}*txt" 2>/dev/null)
+          ## multi-trait joint prediction models
+          accf=$(find ${path} -path "*/mult*/*" -name "accur_*${b}.txt" 2>/dev/null)
           # accf=$(find ${path}/unio* -name "accur_*${b}*txt" 2>/dev/null)
           if [[ ${accf} ]]; then
-            for f in ${accf}; do # f=${accf[0]}
+            for f in ${accf}; do
               if [[ -s ${f} ]]; then
-                ## Filename
-                type=$(dirname ${f})
-                type=$(basename ${type})
-                type=${type/union_/}
+                ## reference populations
+                ref=$(dirname ${f})
+                ref=$(basename ${ref})
+                ref=${ref/multi_/}
+
+                ## model
+                model=$(basename ${f})
+                model=${model/accur_/}
+                model=${model/_${b}.txt/}
+
+                ## print to file
                 {
-                  awk '{print "'${r}'","'${d}'","'${c}'","u-GBLUP","'${type}'","'${b}'","'${t}'",$0}' ${f}
+                  awk '{print "'${r}'","'${d}'","'${c}'","multi","'${model}'","'${ref}'","'${b}'","'${t}'",$0}' ${f}
                   [[ -s ${wf} ]] && \
-                    awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
+                    awk '{print "'${r}'","'${d}'","'${c}'","within","w-GBLUP","'${ref}'","'${b}'","'${t}'", $0}' ${wf}
                   [[ -s ${bf} ]] && \
-                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesABLD","'${type}'","'${b}'","'${t}'", $0}' ${bf}
+                    awk '{print "'${r}'","'${d}'","'${c}'","within","w-mbBayesAB","'${ref}'","'${b}'","'${t}'", $0}' ${bf}
                 } >>${out}
               # else
               #   echo "${accf} not found! "
               fi
             done
           fi
-
-          ## MT-BayesABLD
-          for bin in "${bins_array[@]}"; do
-            accf=$(find ${path}/mult* -name "accur*${bin}*${b}.txt" 2>/dev/null)
-            [[ ! ${accf} ]] && continue
-
-            for f in ${accf}; do # f=${accf[0]}
-              type=$(dirname ${f})
-              type=$(basename ${type})
-              type=${type/multi_/}
-              type="${dirPre}${type}"
-              if [[ -s ${f} ]]; then
-                {
-                  awk '{print "'${r}'","'${d}'","'${c}'","'mbBayesABLD-${bin}'","'${type}'","'${b}'","'${t}'",$0}' ${f}
-                  [[ -s ${wf} ]] && \
-                    awk '{print "'${r}'","'${d}'","'${c}'","w-GBLUP","'${type}'","'${b}'","'${t}'", $0}' ${wf}
-                  [[ -s ${bf} ]] && \
-                    awk '{print "'${r}'","'${d}'","'${c}'","w-BayesABLD","'${type}'","'${b}'","'${t}'", $0}' ${bf}
-                } >>${out}
-              # else
-              #   echo "${f} not found! "
-              fi
-            done
-          done
         done
       done
     done

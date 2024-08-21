@@ -1,13 +1,28 @@
 #!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
-## 字符串自由组合 ###
-## 如输入：A B C
-## 在不加其他限制的情况下会输出3种组合：'A B' 'A C' 'B C' 'A B C'
 
-## 加载需要的程序包（未安装的话请提前安装）
-#cat('Loading required packages... \n\n')
+########################################################################################################################
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Output provides a random combination of strings
+##
+##
+## Usage: ./array_combination.R --array "breedA breedB breedC" ...(Please refer to --help for detailed parameters)
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
+
+
+## Load packages
 suppressPackageStartupMessages(library("getopt"))
 
-## 获取命令行参数
+## Command-line parameters
 spec <- matrix(
   c("array",  "a", 2, "character", "[Required] character array separated by space",
     "label",  "l", 2, "character", "[Optional] combination must include/exclude this string",
@@ -20,57 +35,57 @@ spec <- matrix(
   byrow = TRUE, ncol = 5)
 opt <- getopt::getopt(spec = spec)
 
-## 检查参数
+## Check parameters
 if (!is.null(opt$help) || is.null(opt$array)) {
   cat(paste(getopt::getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
-## 默认参数
+## Default parameters
 if (is.null(opt$min)) opt$min <- 2
 # if (is.null(opt$out)) opt$out <- "combination.txt"
 if (is.null(opt$type)) opt$type <- "include"
 if (!is.null(opt$append)) append <- TRUE else append <- FALSE
 
-## 分割字符串
+## Splitting a string
 array <- strsplit(opt$array, " ")[[1]]
 np <- length(array)
 if (is.null(opt$max)) opt$max <- np
 
-## 列出指定元素数量所有可能的组合的函数
+## Function that lists all possible combinations of a specified number of elements
 com <- function(x, m) {
   if (m < 2) {
     return(x)
   }
 
-  ## 自由组合
+  ## Free combination
   df <- combn(x, m)
 
-  ## 将每行变量粘贴成字符串
+  ## Paste each line of variables into a string
   result <- apply(df, 2, paste, collapse = " ")
 
   return(result)
 }
 
-## 组合
+## combination
 all_com <- c()
 for (i in opt$min:opt$max) {
   com_i <- com(array, i)
   all_com <- c(com_i, all_com)
 }
 
-## 只保留有目标标签的组合
+## Only keep combinations with target labels
 if (!is.null(opt$label)) {
-  ## 判断字符串是否在向量中
+  ## Determine whether the string is in the vector
   if (!opt$label %in% array) {
     cat("label not in array!\n")
     quit(1)
   }
-  
-  ## 找出含有某个标签的组合
+
+  ## Find combinations containing a certain tag
   idx <- grepl(opt$label, all_com)
 
-  ## 提取
+  ## Extract
   if (opt$type == "include") {
     all_com <- all_com[idx]
   } else {
@@ -78,7 +93,7 @@ if (!is.null(opt$label)) {
   }
 }
 
-## 输出文件
+## Output the result to file
 n_com <- length(all_com)
 cat("The number of all possible combinations is:", n_com, "\n")
 if (!is.null(opt$out)) {

@@ -1,49 +1,54 @@
 #!/bin/bash
-#SBATCH --job-name=accur_GBLUP
 
 ########################################################################################################################
-## 版本: 1.1.1
-## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-07-05
-## 
-## 统计各种情形下的方差组分结果
-## 
-## 使用: ./varcomp_summary.sh --help
-## 
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Statistical variance component results
+##
+##
+## Usage:
+## ./varcomp_summary.sh --proj "/path/to/project" ...(Please refer to --help for detailed parameters)
+##
+##
 ## License:
 ##  This script is licensed under the GPL-3.0 License.
 ##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
 ########################################################################################################################
 
 
-###################  参数处理  #####################
+###################  Parameter processing  #####################
 ####################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
-## 参数名
+## Parse arguments
 TEMP=$(getopt -o h --long code:,proj:,breeds:,rep:,dist:,cor:,traits:,bin:,dirPre:,out:,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
-## 解析参数
+##  parse parameter
 while true; do
   case "$1" in
-    --proj )     proj="$2";     shift 2 ;; ## 项目目录 [必要参数]
-    --breeds )   breeds="$2";   shift 2 ;; ## 群体/品种标识符，如'YY DD' [必要参数]
-    --traits )   traits="$2";   shift 2 ;; ## 性状名称，如"DF DPM" ["/"]
-    --rep )      rep="$2";      shift 2 ;; ## 第几次重复 ["/"]
-    --dist )     dist="$2";     shift 2 ;; ## 加性遗传相关服从的分布 ["/"]
-    --cor )      cor="$2";      shift 2 ;; ## 加性遗传相关大小 ["/"]
-    --dirPre )   dirPre="$2";   shift 2 ;; ## ebv输出文件夹增加的前缀 [""]
-    --bin )      bins="$2";     shift 2 ;; ## 多品种评估时区间划分方法，fix/frq/ld/lava/cubic ["fix lava cubic"]
-    --code )     code="$2";     shift 2 ;; ## 脚本文件所在目录，如/BIGDATA2/cau_jfliu_2/liwn/code [NULL]
-    --out )      out="$2";      shift 2 ;; ## 准确性输出文件名 [accuracy_$date.txt]
+    --proj )     proj="$2";     shift 2 ;; ## Project directory [required parameter]
+    --breeds )   breeds="$2";   shift 2 ;; ## Breed identifiers, e.g., 'YY DD' [required parameter]
+    --traits )   traits="$2";   shift 2 ;; ## Trait names, e.g., "DF DPM" ["/"]
+    --rep )      rep="$2";      shift 2 ;; ## Replication number ["/"]
+    --dist )     dist="$2";     shift 2 ;; ## Distribution of additive genetic relationships ["/"]
+    --cor )      cor="$2";      shift 2 ;; ## Magnitude of additive genetic correlation ["/"]
+    --dirPre )   dirPre="$2";   shift 2 ;; ## Prefix added to the EBV output folder [""]
+    --bin )      bins="$2";     shift 2 ;; ## Method of region division for multi-breed prediction, fix/frq/ld/lava/cubic ["fix lava cubic"]
+    --code )     code="$2";     shift 2 ;; ## Directory where the script file is located, e.g., /BIGDATA2/cau_jfliu_2/liwn/code [NULL]
+    --out )      out="$2";      shift 2 ;; ## Output filename for accuracy [accuracy_$date.txt]
   -h | --help)    grep ";; ##" $0 | grep -v help && exit 1 ;;
   -- ) shift; break ;;
   * ) shift; break ;;
   esac
 done
 
-## 检查必要参数是否提供
+## Check the required parameters
 if [[ ! -d ${proj} ]]; then
   echo "${proj} not found! "
   exit 1
@@ -52,10 +57,10 @@ elif [[ ! ${breeds} ]]; then
   exit 1
 fi
 
-## 日期
+## Date
 today=$(date +%Y%m%d)
 
-## 默认参数
+## Default parameters
 out=${out:=${proj}/varcomp_${today}.txt}
 bins=${bins:="fix lava cubic"}
 dirPre=${dirPre:=""}
@@ -64,16 +69,17 @@ rep=${rep:="/"}
 dist=${dist:="/"}
 cor=${cor:="/"}
 
-## 避免执行R脚本时的警告("ignoring environment value of R_HOME")
+## Avoid warnings when running R scripts ("ignoring environment value of R_HOME")
 unset R_HOME
 
-## DMU参数卡名称
+## DMU parameter card name
 DIR_full=phe_adj_BLUP
 DIR_within=within
-DIR_blend=blend
-DIR_union=union
+DIR_single=single
+DIR_multi=multi
+bayesR_prefix=bayesR
 
-## 解析参数
+##  parse parameter
 read -ra breeds_array <<<"$breeds"
 read -ra bins_array <<<"$bins"
 read -ra traits_array <<<"$traits"
@@ -81,43 +87,42 @@ read -ra reps_array <<<"$rep"
 read -ra dists_array <<<"$dist"
 read -ra cors_array <<<"$cor"
 
-##############  方差组分整理  ##############
-###########################################
-echo "模拟重复 相关分布 相关大小 模型 参考群 品种 性状 交叉重复 交叉折数 类型 值" >${out}
-for p in "${traits_array[@]}"; do # p=${traits_array[0]};re=${reps_array[0]};d=${dists_array[0]};c=${cors_array[0]}
-  for re in "${reps_array[@]}"; do # b=${breeds_array[0]};r=1;f=1;bin=fix
+##############  Variance component sorting  ##############
+##########################################################
+for p in "${traits_array[@]}"; do
+  for re in "${reps_array[@]}"; do
     for d in "${dists_array[@]}"; do
       for c in "${cors_array[@]}"; do
         path=${proj}/${p}
 
-        ## 模拟情形下的路径设置
+        ## Set the path under the simulation scenario
         [[ ${re} != "/" ]] && path=${path}/rep${re}
         [[ ${d} != "/" ]] && path=${path}/${d}
         [[ ${c} != "/" ]] && path=${path}/cor${c}
 
-        ## 处理路径中存在多个斜杠的情况
+        ## Handle cases where there are multiple slashes in the path
         path=$(echo "$path" | sed 's#/\{2,\}#/#g; s#/$##')
 
-        ## 判断文件夹是否存在
+        ## Check if the directory exists
         [[ ! -d ${path} ]] && continue
 
-        ## 品种内遗传力
+        ## Heritability within breed
         for b in "${breeds_array[@]}"; do
-          ## 交叉验证参数
+          ## Cross-validation parameters
           rep=$(find ${path}/${b}/val1 -name "rep*" -type d | wc -l)
           fold=$(find ${path}/${b}/val* -name "rep1" -type d | wc -l)
 
-          ## 每个子集方差组分
-          for r in $(seq 1 ${rep}); do # r=1;f=1
+          ## Variance components for each subset
+          for r in $(seq 1 ${rep}); do
             for f in $(seq 1 ${fold}); do
-                ## GBLUP
+                ## within prediction --- GBLUP
                 lst=${path}/${b}/val${f}/rep${r}/${DIR_within}.lst
                 if [[ -s ${lst} ]]; then
                   h2_within=$(grep -A2 'Trait  correlation' ${lst} | tail -n 1 | awk '{print $2}')
-                  # echo "${re} ${d} ${c} w-GBLUP ${b} ${b} ${p} ${r} ${f} h2 ${h2_within}" >>${out}
+                  echo "${re} ${d} ${c} w-GBLUP ${b} ${b} ${p} ${r} ${f} h2 ${h2_within}" >>${out}
                 fi
 
-                ## Bayes
+                ## within prediction --- Bayes
                 ebvf=${path}/${b}/val${f}/rep${r}/EBV_fix_y1.txt
                 varf=${path}/${b}/val${f}/rep${r}/var_fix.txt
                 [[ ! -s ${ebvf} || ! -s ${varf} ]] && continue
@@ -129,17 +134,17 @@ for p in "${traits_array[@]}"; do # p=${traits_array[0]};re=${reps_array[0]};d=$
           done
         done
 
-        ## 品种组合
-        mapfile -t blends < <(find ${path} -name "blend*" -type d 2>/dev/null)
+        ## Breed combinations
+        mapfile -t single < <(find ${path} -name "singl*" -type d 2>/dev/null)
 
-        for t in "${blends[@]}"; do # t=${blends[0]}
-          paths=$(basename ${t})
-          types=${paths/blend_/}
+        for t in "${single[@]}"; do
+          dir=$(basename ${t})
+          types=${dir/single_/}
           IFS='_' read -r -a breeds_sub <<<"$types"
-          n=${#breeds_sub[@]}
+          nb=${#breeds_sub[@]}
 
-          ## types
-          if [[ ${types} == "blend" ]]; then
+          ## Types
+          if [[ ${types} == "single" ]]; then
             types=""
             comb=${breeds// /_}
           else
@@ -147,33 +152,44 @@ for p in "${traits_array[@]}"; do # p=${traits_array[0]};re=${reps_array[0]};d=$
             comb=$(IFS="_"; echo "${breeds_sub[*]}")
           fi
 
-          ## 组合中每个品种
-          for i in "${!breeds_sub[@]}"; do # i=0
-            ## 子集
-            for r in $(seq 1 ${rep}); do # r=5;f=5
+          ## Each breed in the combination
+          for i in "${!breeds_sub[@]}"; do
+            ## Subsets
+            for r in $(seq 1 ${rep}); do
               for f in $(seq 1 ${fold}); do
-                ## 单性状GBLUP联合评估
-                lst=${path}/blend${types}/val${f}/rep${r}/${DIR_blend}.lst
+                ## Single-trait GBLUP joint prediction
+                lst=${path}/single${types}/val${f}/rep${r}/${DIR_single}.lst
                 if [[ -s ${lst} ]]; then
-                  h2_blend=$(grep -A2 'Trait  correlation' ${lst} | tail -n 1 | awk '{print $2}')
-                # else
-                #   h2_blend=""
-                #   echo "${lst} not found! "
+                  h2_sG=$(grep -A2 'Trait  correlation' ${lst} | tail -n 1 | awk '{print $2}')
+                else
+                  h2_sG=""
+                  echo "${lst} not found! "
                 fi
 
-                ## 双性状联合评估
-                lst=${path}/union${types}/val${f}/rep${r}/${DIR_union}.lst
+                ## Single-trait bayesR joint prediction
+                model=${path}/single${types}/val${f}/rep${r}/${bayesR_prefix}.model
+                if [[ -s ${model} ]]; then
+                  Va=$(grep 'Va' ${model} | awk '{printf("%f",$2)}')
+                  Ve=$(grep 'Ve' ${model} | awk '{printf("%f",$2)}')
+                  h2_sR=$(echo "scale=4; $Va / ($Va + $Ve)" | bc)
+                else
+                  h2_sR=""
+                  echo "${model} not found! "
+                fi
+
+                ## multi-breed GBLUP joint prediction
+                lst=${path}/multi${types}/val${f}/rep${r}/${DIR_multi}.lst
                 if [[ -s ${lst} ]]; then
                   message="Correlation matrix for random"
-                  h2_union=$(grep -A $((i + 2)) 'Trait  correlation' ${lst} | tail -n 1 | awk '{print $2}')
+                  h2_mG=$(grep -A $((i + 2)) 'Trait  correlation' ${lst} | tail -n 1 | awk '{print $2}')
 
-                  for j in $(seq $((i + 1)) $((n - 1))); do
+                  for j in $(seq $((i + 1)) $((nb - 1))); do
                     rg_union=$(grep -A $((j + 2)) "${message}" ${lst} | tail -n 1 | awk -v col=$((i + 2)) '{print $col}')
-                    echo "${re} ${d} ${c} MT-GBUP ${comb} ${breeds_sub[i]}_${breeds_sub[j]} ${p} ${r} ${f} rg ${rg_union}" >>${out}
+                    echo "${re} ${d} ${c} m-MTGBUP ${comb} ${breeds_sub[i]}_${breeds_sub[j]} ${p} ${r} ${f} rg ${rg_union}" >>${out}
                   done
-                # else
-                #   h2_union=""
-                #   echo "${lst} not found! "
+                else
+                  h2_mG=""
+                  echo "${lst} not found! "
                 fi
 
                 for bin in "${bins_array[@]}"; do
@@ -184,28 +200,28 @@ for p in "${traits_array[@]}"; do # p=${traits_array[0]};re=${reps_array[0]};d=$
                     varfi=$(find ${multi_path} -name "var_${bin}*.txt" 2>/dev/null)
                     [[ ! -s ${ebvfi} || ! -s ${varfi} ]] && continue
 
-                    ## 遗传力
+                    ## Heritability
                     varg=$(sed '1d' ${ebvfi} | awk '{sum+=$2; sumsq+=($2)^2} END {print (sumsq/NR-(sum/NR)^2)}')
-                    vare=$(tail -n 1 ${varfi} | awk -v col=$((i * n + i + 1)) '{print $col}')
+                    vare=$(tail -n 1 ${varfi} | awk -v col=$((i * nb + i + 1)) '{printf("%f",$col)}')
                     h2_multi=$(echo "scale=4; $varg / ($varg + $vare)" | bc)
                     echo "${re} ${d} ${c} ${bin} ${comb} ${breeds_sub[i]} ${p} ${r} ${f} h2 ${h2_multi}" >>${out}
 
-                    ## 遗传相关
-                    for j in $(seq $((i + 1)) $((n - 1))); do
+                    ## Genetic correlation
+                    for j in $(seq $((i + 1)) $((nb - 1))); do
                       ebvfj=$(find ${multi_path} -name "EBV_${bin}_y$((j + 1)).txt" 2>/dev/null)
                       [[ ! -s ${ebvfj} ]] && continue
 
-                      # 计算A文件中第2列减去均值的值
+                      # Calculate values in column 2 of file A minus the mean
                       meanA=$(awk 'NR>1{sum+=$2}END{print sum/(NR-1)}' ${ebvfi})
                       awk -v meanA="$meanA" 'NR>1{print $2-meanA}' ${ebvfi} >A.tmp
-                      # 计算B文件中第2列减去均值的值
+                      # Calculate values in column 2 of file B minus the mean
                       meanB=$(awk 'NR>1{sum+=$2}END{print sum/(NR-1)}' ${ebvfj})
                       awk -v meanB="$meanB" 'NR>1{print $2-meanB}' ${ebvfj} >B.tmp
-                      # 计算协方差
+                      # Calculate covariance
                       cov=$(paste A.tmp B.tmp | awk '{sum+=($1*$2)}END{print sum/(NR - 1)}')
                       var2=$(sed '1d' ${ebvfj} | awk '{sum+=$2; sumsq+=($2)^2} END {print (sumsq/NR-(sum/NR)^2)}')
 
-                      ## 计算遗传相关
+                      ## Calculate genetic correlation
                       if [[ $(echo "$varg < 0" | bc -l) -eq 1 || $(echo "$var2 < 0" | bc -l) -eq 1 ]]; then
                         echo "varg=$varg var2=$var2"
                         rg_multi=0
@@ -218,10 +234,11 @@ for p in "${traits_array[@]}"; do # p=${traits_array[0]};re=${reps_array[0]};d=$
                   # done
                 done
 
-                ## 写出到文件
+                ## Write to file
                 {
-                  echo "${re} ${d} ${c} ST-GBUP ${comb} ${breeds_sub[i]} ${p} ${r} ${f} h2 ${h2_blend}"
-                  echo "${re} ${d} ${c} MT-GBUP ${comb} ${breeds_sub[i]} ${p} ${r} ${f} h2 ${h2_union}"
+                  echo "${re} ${d} ${c} bayesR ${comb} ${breeds_sub[i]} ${p} ${r} ${f} h2 ${h2_sR}"
+                  echo "${re} ${d} ${c} m-STGBUP ${comb} ${breeds_sub[i]} ${p} ${r} ${f} h2 ${h2_sG}"
+                  echo "${re} ${d} ${c} m-MTGBUP ${comb} ${breeds_sub[i]} ${p} ${r} ${f} h2 ${h2_mG}"
                 } >>${out}
               done
             done
@@ -232,7 +249,7 @@ for p in "${traits_array[@]}"; do # p=${traits_array[0]};re=${reps_array[0]};d=$
   done
 done
 
-## 去除na值行
+## Remove rows with NA values
 sed -i '/ $/d' ${out}
 sed -i 's/ /\t/g' ${out}
 

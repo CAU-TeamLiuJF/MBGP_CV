@@ -2,28 +2,34 @@
 
 
 ########################################################################################################################
-## 版本: 1.1.1
-## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-07-05
-## 简介: 用于估计联合评估BLUP/Bayes的预测准确性，需要先完成群体内准确性计算(即不同群体目录下有val*/rep*文件夹)再运行此脚本
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-07-05
 ##
-## 使用: ./multi_breed.sh --pops "breedA breedB" --bfileM /path/to/your/plinkFile ...(详细参数请通过--help查看)
-## 依赖软件/环境: 
+## Function：
+## To estimate the accuracy of the joint prediction, it is necessary to first complete the within-breed genomic prediction
+##  (i.e. there are val */rep * folders in different breed (population) directories) before running this script
+##
+## Usage: ./GP_multi_breed.sh --pops "breedA breedB" ...(Please refer to --help for detailed parameters)
+##
+## Dependent software/environment:
 ##  1. R
 ##  2. plink/1.9
 ##  3. gmatrix
 ##  4. mbBayesABLD
-##  5. 其他R语言和Bash脚本
+##  5. Other R languages and Bash scripts
 ##
 ## License:
 ##  This script is licensed under the GPL-3.0 License.
 ##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
 ########################################################################################################################
 
-###################  参数处理  ###################
-#################################################
+###################  Parameter processing  ###################
+##############################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
-TEMP=$(getopt -o h4 --long ref:,rg_local,keep_all,nbin:,binf:,summs:,dirPre:,noCov,debug,traceplot,bfileW:,bfileM:,pops:,pedf:,priorVar:,DIR:,vidf:,method:,rg:,re:,type:,GmatM:,gmat:,gidf:,invA:,all_eff:,ran_eff:,tbvf:,tbv_col:,phereal:,add_rf:,fold:,rep:,miss:,bincol:,num_int:,win:,nsnp_win:,r2_merge:,bin:,LD_maxD:,r2:,inter:,fix_snp:,seed:,iter:,burnin:,thin:,report_sep:,code:,thread:,alpha:,out:,nchr:,updatepri:,prefix:,VarA,dmu4,overwri,suffix,dense \
+TEMP=$(getopt -o h4 --long ref:,rg_local,keep_all,nbin:,binf:,summs:,dirPre:,noCov,debug,traceplot,bfileW:,bfileM:,pops:,pedf:,priorVar:,DIR:,vidf:,method:,rg:,re:,type:,GmatM:,gmat:,gidf:,invA:,all_eff:,ran_eff:,tbvf:,tbv_col:,phereal:,add_rf:,fold:,rep:,miss:,bincol:,num_int:,win:,nsnp_win:,r2_merge:,bin:,LD_maxD:,r2:,inter:,fix_snp:,seed:,iter:,burnin:,thin:,report_sep:,code:,thread:,alpha:,out:,nchr:,updatepri:,prefix:,VarA,dmu4,overwrite,suffix,dense \
   -n 'javawrap' -- "$@")
 if [ $? != 0 ]; then
   echo "Terminating..." >&2
@@ -31,96 +37,93 @@ if [ $? != 0 ]; then
 fi
 eval set -- "$TEMP"
 
-## 解析参数
+## Parse arguments
 while true; do
   case "$1" in
-  --pops )      pops="$2";       shift 2 ;; ## 群体A标识符，如'YY DD'
-  --bfileW )    bfileW="$2";     shift 2 ;; ## 每个品种的基因型文件，如'./data/YY ./data/DD'
-  --bfileM )    bfileM="$2";     shift 2 ;; ## plink二进制文件前缀，群体合并后的
-  --binf )      binf="$2";       shift 2 ;; ## 区间文件
-  --bincol )    bincol="$2";     shift 2 ;; ## 区间文件中指示区间内标记数的列 [1]
-  --pedf )      pedf="$2";       shift 2 ;; ## 系谱文件，可为合并的单个系谱，也可为以空格分隔的每个群体的系谱文件
-  --summs )     summs="$2";      shift 2 ;; ## GEMMA结果文件前缀
-  --priorVar )  priorVar="$2";   shift 2 ;; ## 方差组分初始值来源 null/predict/pheno/A/B/... [pheno]
-  --h2 )        h2="$2";         shift 2 ;; ## 遗传力，用于生成初始方差组分，两个性状不同时空格隔开，如 '0.3 0.1' [0.5]
-  --priorRg )   rg="$2";         shift 2 ;; ## 群体A和B的加性相关大小先验(两性状模型) [0.001]
-  --priorRe )   re="$2";         shift 2 ;; ## 群体A和B的残差相关大小先验(两性状模型) [0.001]
-  --DIR )       DIR="$2";        shift 2 ;; ## 参数卡前缀 [type]
-  --method )    method="$2";     shift 2 ;; ## dmu评估模型，BLUP/GBLUP/ssGBLUP
-  --type )      type="$2";       shift 2 ;; ## 参考群合并方式 blend/union/multi(两性状模型) [blend]
-  --GmatM )     GmatM="$2";      shift 2 ;; ## 基因型矩阵构建方式[multi/single]
-  --gmat )      gmat="$2";       shift 2 ;; ## 用户提供关系矩阵或逆矩阵(id id value)
-  --gidf )      gidf="$2";       shift 2 ;; ## 基因型个体id，与用户指定的G阵文件中个体id一致
-  --invA )      invA="$2";       shift 2 ;; ## A逆构建方式(1/2/3/4/6)，1为考虑近交，2为不考虑近交，其他见DMU说明书 [1]
-  --all_eff  )  all_eff="$2";    shift 2 ;; ## DIR中$MODEL第3行(所有效应)，前3位不用，如"2 1"，品种间不同时用-分隔
-  --ran_eff  )  ran_eff="$2";    shift 2 ;; ## DIR中$MODEL第4行(随机效应分)，第1位不用，如"1"，品种间不同时用-分隔
-  --tbvf )      tbvf="$2";       shift 2 ;; ## 包含真实育种值的文件
-  --tbv_col )   tbv_col="$2";    shift 2 ;; ## 真实育种值在表型文件的第几列，当真实育种值即为表型文件中相应列表型时参数应为"same"
-  --phereal )   phereal="$2";    shift 2 ;; ## 表型在表型文件中实数列的位置
-  --add_rf )    add_rf="$2";     shift 2 ;; ## 加性效应所在分组
-  --fold )      fold="$2";       shift 2 ;; ## 交叉验证倍数
-  --rep )       rep="$2";        shift 2 ;; ## 重复计算次数
-  --miss )      miss="$2";       shift 2 ;; ## 缺失表型表示符
-  --num_int )   num_int="$2";    shift 2 ;; ## 表型文件中整型变量的列数 [从A品种表型文件中获取]
-  --nsnp_win )  nsnp_win="$2";   shift 2 ;; ## 合并前每个窗口SNP数
-  --win )       win="$2";        shift 2 ;; ## 计算指定SNP侧翼R2均值时的窗口大小 [50]
-  --bin )       bin="$2";        shift 2 ;; ## 是否合并临近窗口，fix/frq/ld/lava/cubic [lava]
-  --maf )       maf="$2";        shift 2 ;; ## 当bin为cubic时，根据指定次等位基因频率阈值对SNP进行过滤 [-0.01]
-  --nbin )      nbin="$2";       shift 2 ;; ## 当bin为fix时，划分区间数约束为与nbin相近
-  --ref )       ref="$2";        shift 2 ;; ## Reference panel for dividing blocks M/1[index of breed]/2/... [M]
-  --r2_merge )  r2_merge="$2";   shift 2 ;; ## 合并临近窗口时的LD阈值
-  --LD_maxD )   LD_maxD="$2";    shift 2 ;; ## plink参数，计算LD时，SNP对的最大距离kb
-  --r2 )        r2="$2";         shift 2 ;; ## plink参数，计算LD时，输出结果文件中R2的阈值
-  --inter )     inter="$2";      shift 2 ;; ## plink参数，计算LD时，间隔位点数多于inter的标记对不计算LD值
-  --seed )      seed="$2";       shift 2 ;; ## MCMC抽样时的随机种子
-  --iter )      iter="$2";       shift 2 ;; ## MCMC 总循环次数
-  --burnin )    burnin="$2";     shift 2 ;; ## MCMC burn-in循环数
-  --thin )      thin="$2";       shift 2 ;; ## MCMC抽样步长
-  --report )    report_sep="$2"; shift 2 ;; ## MCMC报告间隔
-  --code )      code="$2";       shift 2 ;; ## 脚本路径
-  --thread )    thread="$2";     shift 2 ;; ## dmu任务并行数
+  --pops )      pops="$2";       shift 2 ;; ## Breed A identifiers, such as 'YY DD'
+  --bfileW )    bfileW="$2";     shift 2 ;; ## Genotype files for each breed, like './data/YY ./data/DD'
+  --bfileM )    bfileM="$2";     shift 2 ;; ## Prefix for merged PLINK binary files
+  --binf )      binf="$2";       shift 2 ;; ## genome block (bin) file
+  --bincol )    bincol="$2";     shift 2 ;; ## Column in the block file indicating the number of markers within block [1]
+  --pedf )      pedf="$2";       shift 2 ;; ## Pedigree file, can be a single merged pedigree or a space-separated list files for each breed
+  --summs )     summs="$2";      shift 2 ;; ## Prefix for GEMMA results files
+  --priorVar )  priorVar="$2";   shift 2 ;; ## Initial values for variance components, can be null/predict/pheno/A/B/... [pheno]
+  --h2 )        h2="$2";         shift 2 ;; ## Heritability used to generate initial variance components, like '0.5' or '0.3 0.1' [0.5]
+  --priorRg )   rg="$2";         shift 2 ;; ## Prior for additive genetic correlation between Breed A and B (two-trait model) [0.001]
+  --priorRe )   re="$2";         shift 2 ;; ## Prior for residual correlation between breed A and B (two-trait model) [0.001]
+  --DIR )       DIR="$2";        shift 2 ;; ## Parameter card prefix [type]
+  --method )    method="$2";     shift 2 ;; ## Genomic prediction model, options are BLUP/GBLUP/ssGBLUP/bayesR/mbBayesAB [GBLUP]
+  --type )      type="$2";       shift 2 ;; ## Joint prediction model, options are single/multi [single]
+  --bayes )     bayes="$2";      shift 2 ;; ## Bayesian method for multi-trait prediction, options are mbBayesAB or bayesR [mbBayesAB]
+  --GmatM )     GmatM="$2";      shift 2 ;; ## Method to construct genotype matrix [multi/single]
+  --gmat )      gmat="$2";       shift 2 ;; ## User-provided relationship matrix or inverse matrix (id id value)
+  --gidf )      gidf="$2";       shift 2 ;; ## Genotype individual IDs, consistent with the IDs in the user-specified G matrix file
+  --invA )      invA="$2";       shift 2 ;; ## A-inverse construction method (1/2/3/4/6), refer to DMU manual for details [1]
+  --all_eff  )  all_eff="$2";    shift 2 ;; ## Third line in $MODEL in DIR (all effects), the first three are ignored, e.g., "2 1", separated by '-' if different between breeds
+  --ran_eff  )  ran_eff="$2";    shift 2 ;; ## Fourth line in $MODEL in DIR (random effects), the first one is ignored, e.g., "1", separated by '-' if different between breeds
+  --tbvf )      tbvf="$2";       shift 2 ;; ## File containing TBVss
+  --tbv_col )   tbv_col="$2";    shift 2 ;; ## Column number of TBVs in the phenotype file, should be "same" if the TBVs is the same as the corresponding phenotype in the phenotype file
+  --phereal )   phereal="$2";    shift 2 ;; ## Column number of the real phenotype in the phenotype file
+  --add_rf )    add_rf="$2";     shift 2 ;; ## Group in which additive effects are located
+  --fold )      fold="$2";       shift 2 ;; ## Cross-validation fold number
+  --rep )       rep="$2";        shift 2 ;; ## Number of repetitions
+  --miss )      miss="$2";       shift 2 ;; ## Missing phenotype identifier [-99]
+  --num_int )   num_int="$2";    shift 2 ;; ## Number of integer variables in the phenotype file [obtained from breed A's phenotype file]
+  --nsnp_win )  nsnp_win="$2";   shift 2 ;; ## Number of SNPs per window before merging
+  --win )       win="$2";        shift 2 ;; ## Window size when calculating the mean R2 for specified SNPs [50]
+  --bin )       bin="$2";        shift 2 ;; ## Whether to merge adjacent windows, options are fix/frq/ld/lava/cubic [lava]
+  --maf )       maf="$2";        shift 2 ;; ## Filter SNPs based on the specified minor allele frequency threshold when bin is cubic [-0.01]
+  --nbin )      nbin="$2";       shift 2 ;; ## Number of blocks, constrained to be close to nbin when bin is fixed
+  --ref )       ref="$2";        shift 2 ;; ## Reference panel for dividing blocks, options are M/1[index of breed]/2/... [M]
+  --r2_merge )  r2_merge="$2";   shift 2 ;; ## LD threshold for merging adjacent windows
+  --LD_maxD )   LD_maxD="$2";    shift 2 ;; ## PLINK parameter, maximum distance in kb for SNP pairs when calculating LD
+  --r2 )        r2="$2";         shift 2 ;; ## PLINK parameter, R2 threshold in the output file when calculating LD
+  --inter )     inter="$2";      shift 2 ;; ## PLINK parameter, LD is not calculated for marker pairs with more than inter intervening loci
+  --seed )      seed="$2";       shift 2 ;; ## Random seed for MCMC sampling
+  --iter )      iter="$2";       shift 2 ;; ## Total number of MCMC iterations
+  --burnin )    burnin="$2";     shift 2 ;; ## Number of MCMC burn-in iterations
+  --thin )      thin="$2";       shift 2 ;; ## MCMC sampling interval
+  --report )    report_sep="$2"; shift 2 ;; ## MCMC report interval
+  --code )      code="$2";       shift 2 ;; ## Script path
+  --thread )    thread="$2";     shift 2 ;; ## Number of parallel DMU tasks
   --alpha )     alpha="$2";      shift 2 ;; ## ssGBLUP relationship matrix alpha
-  --vidf )      vidf="$2";       shift 2 ;; ## 验证群个体id文件名
-  --out )       out="$2";        shift 2 ;; ## 输出准确性文件名前缀
-  --dirPre )    dirPre="$2";     shift 2 ;; ## ebv输出文件夹增加的前缀
-  --updatepri ) updatepri="$2";  shift 2 ;; ## 指定轮次更新prior方差尺度矩阵先验 [0]
-  --prefix )    prefix="$2";     shift 2 ;; ## 在union/blend/multi等文件夹前添加指定前缀
-  --nchr )      nchr="$2" ;      shift 2 ;; ## 染色体数目 [30]
-  --dense )     dense=true;      shift   ;; ## 将DMU的ANALYSE中的method设为31，利用多线程计算方差组分
-  --suffix )    suffix=true;     shift   ;; ## 在union/blend/multi等文件夹后添加品种名称后缀
-  --debug )     debug=true;      shift   ;; ## 不跑DMU、gmatrix、bayes等时间长的步骤
-  --rg_local )  rg_local=true;   shift   ;; ## 每个基因组分区的协方差不同，为局部ld、frq相关系数
-  --noCov )     noCov=true;      shift   ;; ## 性状间的残差效应约束为0
-  --keep_all )  keep_all=true;   shift   ;; ## 保留所有Bayes结果文件
-  --traceplot ) traceplot=true;  shift   ;; ## MCMC burn-in期后的trace plot
-  --overwri )   overwrite=true;  shift   ;; ## 若存在已生成的准备文件(表型、id文件等)，则进行覆写
-  -4 | --dmu4 ) dmu4=true;       shift   ;; ## 使用dmu4进行评估，不估计方差组分
+  --vidf )      vidf="$2";       shift 2 ;; ## Filename of the validation breed individual ID file
+  --out )       out="$2";        shift 2 ;; ## Prefix for the output accuracy filename
+  --dirPre )    dirPre="$2";     shift 2 ;; ## Prefix added to the output folder for EBV
+  --updatepri ) updatepri="$2";  shift 2 ;; ## Update prior variance-covariance matrix at the specified round [0]
+  --nchr )      nchr="$2" ;      shift 2 ;; ## Number of chromosomes [30]
+  --prefix )    prefix="$2";     shift 2 ;; ## Add the specified prefix to the single/multi folder
+  --suffix )    suffix=true;     shift   ;; ## Add breed name suffix to single/multi folder
+  --dense )     dense=true;      shift   ;; ## Set method in DMU's ANALYSE to 31 to utilize multi-threading for variance component calculations
+  --debug )     debug=true;      shift   ;; ## Skip time-consuming steps like DMU, gmatrix, bayes, etc.
+  --rg_local )  rg_local=true;   shift   ;; ## Different covariance for each genomic region, for local LD, frequency correlation coefficients
+  --noCov )     noCov=true;      shift   ;; ## Constrain residual effects between traits to 0
+  --keep_all )  keep_all=true;   shift   ;; ## Keep all Bayes result files
+  --traceplot ) traceplot=true;  shift   ;; ## Trace plot after MCMC burn-in period
+  --overwrite ) overwrite=true;  shift   ;; ## Overwrite if preparation files (phenotype, ID files, etc.) already exist
+  -4 | --dmu4 ) dmu4=true;       shift   ;; ## Use dmu4 for prediction, variance components will not be estimated
   -h | --help)  grep ";; ##" $0 | grep -v help && exit 1 ;;
   -- ) shift; break ;;
   * ) break ;;
   esac
 done
 
-## 调用软件需要的模块
-# module load GCC/11.3.0
-
-## 工作目录
+## Working directory
 workdir=$(pwd)
 
-## 日志文件夹
+## Log directory
 logp=${workdir}/log
 mkdir -p ${logp}
 
-## 脚本所在文件夹
+## Script directory
 if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
   script_path=$(dirname "$(readlink -f "$0")")
   code=$(dirname "$script_path")
-  code=$(dirname "$script_path")
 fi
 
-## 脚本
+## Scripts
 pheMerge=${code}/R/multibreed_pheno.R
 accur_cal=${code}/R/accuracy_bias_calculation.R
 fix_frq_ld_bolck=${code}/R/fix_frq_ld_bolck.R
@@ -131,39 +134,38 @@ multiG=${code}/R/multibreed_relationship_matrix.R
 variance_prior=${code}/R/variance_prior_setting.R
 MCMC_polt=${code}/R/MCMC_chain_plot.R
 local_rg=${code}/R/local_block_rg.R
-# keep_phe_gid=${code}/R/pheno_pre/pheno_all_genoid.R
-# phe_order=${code}/R/pheno_pre/pheno_order.R
+bayesR=${code}/shell/BayesR.sh
 
-## 载入自定义函数
+## Load custom functions
 [[ ! -s ${func} ]] && echo "Error: ${func} not found! " && exit 5
-source ${job_pool}
+source ${job_pool} ## Parallel computing
 source ${func}
 
-## 将程序路径加到环境变量中
+## Add program paths to environment variables
 export PATH=${code}/bin:$PATH
 
-## 检查需要的程序是否在环境变量中能检索到并且可执行
+## Check if required programs are in the environment path and executable
 check_command plink gmatrix mbBayesABLD LD_mean_r2 run_dmu4 run_dmuai
 
-## 检查需要的脚本文件是否存在且具有执行权限
+## Check if required script files exist and are executable
 check_command $pheMerge $accur_cal $fix_frq_ld_bolck $lava_cubic_bolck $job_pool $func
 check_command $multiG $variance_prior $MCMC_polt $local_rg
 
-## 避免执行R脚本时的警告("ignoring environment value of R_HOME")
+## Prevent warnings when executing R scripts ("ignoring environment value of R_HOME")
 unset R_HOME
 
-## suffix
+## Directory suffix
 if [ "$suffix" = true ]; then
   suffix="_$(echo "${pops}" | tr ' ' '_')"
 else
   suffix=""
 fi
 
-## 存放结果的目录
+## Directory to store results
 tpath=${workdir}/${prefix}${type}${suffix}
 mkdir -p ${tpath}
 
-## 默认参数
+## Default parameters
 nchr=${nchr:=30}
 updatepri=${updatepri:=0}
 LD_maxD=${LD_maxD:=10000}
@@ -177,7 +179,7 @@ bincol=${bincol:=1}
 fold=${fold:=1}
 rep=${rep:=1}
 miss=${miss:=-99}
-type=${type:=blend}
+type=${type:=single}
 phereal=${phereal:=1}
 h2=${h2:=0.5}
 rg=${rg:=0.001}
@@ -198,10 +200,9 @@ add_rf=${add_rf:=1}
 geno=${geno:=0.2}
 mind=${mind:=0.2}
 code=${code:=${HOME}/liwn/code}
-[[ ${tbvf} && ! ${tbv_col} ]] && tbv_col=2 ## 真实育种值文件存在，默认育种值在文件第二列，id在第一列
+[[ ${tbvf} && ! ${tbv_col} ]] && tbv_col=2 ## If the TBVs file exists, assume the TBVs is in the 2rd column by default, with IDs in the 1st column.
 
-## 参数初始化
-# [[ ${noCov} ]] && noCov=" --constraint "
+## Parameter initialization
 [[ ${noCov} ]] && noCov=" --nocov "
 # [[ ${all_samps} ]] && all_samps=" --all_samp_out "
 [[ ${keep_all} ]] && keep_all=" --keep_all "
@@ -212,50 +213,45 @@ else
   h2B=${h2}
 fi
 
-## 随机数种子
+## Random seed
 if [[ ! ${seed} ]]; then
   seed=$RANDOM
   echo "$seed" >MCMC_seed.txt
 fi
 
-## 准确性输出文件名
+## Accuracy output file name
 if [[ ! ${out} ]]; then
-  out=accur_GBLUP
-  [[ ${type} == "multi" ]] && out=accur_bayes
+  out=accur_${method}
 fi
 
-## 并行作业数设置
+## Set the number of parallel jobs
 if [[ ! ${thread} ]]; then
   if [[ ${SLURM_CPUS_ON_NODE} ]]; then thread=${SLURM_CPUS_ON_NODE}; else thread=$((rep * fold)); fi
 fi
 
-## 作业数池
-# shellcheck source=/dev/null
-source "${job_pool}"
-
-## 作业池初始化
+## Initialize job pool
 [[ ! ${debug} ]] && job_pool_init ${thread} 0
 
-##################  解析命令行参数  ##############
-################################################
+##################  Parse command line parameters  ##############
+#################################################################
 np=$(echo ${pops} | awk '{print NF}')
 IFS=" " read -r -a popN <<<"$pops"
 IFS=" " read -r -a bfileWa <<<"$bfileW"
 
-## DMU多线程
+## DMU multi-threading
 if [[ ${method} == "GBLUP" && ${dense} ]]; then
   method_dmu="31"
 else
   method_dmu="1"
 fi
 
-###############  检查品种内评估是否完成  ###########
-#################################################
-## 交叉验证和重复
+###############  Check if within-breed prediction is complete  ###########
+##########################################################################
+## Cross-validation and repetition
 rep=$(find ${workdir}/${popN[0]}/val1/rep* -type d | wc -l)
 fold=$(find ${workdir}/${popN[0]}/val*/rep1 -type d | wc -l)
 
-## 每个子集下文件是否存在
+## Check if files exist in each subset
 for r in $(seq 1 ${rep}); do
   for f in $(seq 1 ${fold}); do
     for b in "${popN[@]}"; do
@@ -264,7 +260,7 @@ for r in $(seq 1 ${rep}); do
           echo "${workdir}/${b}/val${f}/rep${r}/${file} not found! " &&
           exit 1
 
-        ## 获取表型文件中的整型和实型变量数
+        ## Get the number of integer and real variables in the phenotype file
         if [[ ! ${num_int} ]]; then
           phef_within=${workdir}/${b}/val${f}/rep${r}/pheno.txt
           ncol=$(awk 'END{print NF}' ${phef_within})
@@ -279,25 +275,25 @@ for r in $(seq 1 ${rep}); do
   done
 done
 
-##################  获取品种内模型效应设定  #############
-########################################################
-## 从其中一个品种子集中获取效应设定(不同品种效应相同，以第一个品种为准)
+##################  Retrieve Model Effect Settings Within Breeds  #############
+###############################################################################
+## Retrieve effect settings from one of the breed subsets (effects are the same across breeds, use the first breed as reference)
 firstB=$(echo ${pops} | cut -d ' ' -f 1)
 within_DIR=$(find ${workdir}/${firstB}/val1/rep1 -name "*.DIR" | head -n 1)
 [[ ! -s ${within_DIR} ]] && echo "${within_DIR} not found! " && exit 1
 model_line=$(grep -n "MODEL" ${within_DIR} | head -n 1 | cut -d ':' -f 1)
 all_eff=$(sed -n "$((model_line + 3))p" ${within_DIR} | cut -d ' ' -f '4-')
 ran_eff=$(sed -n "$((model_line + 4))p" ${within_DIR} | cut -d ' ' -f '2-')
-## 效应个数
+## Number of Effects
 nA=$(echo ${all_eff} | awk '{print NF}')
 nR=$(echo ${ran_eff} | awk '{print NF}')
-## 增加品种固定效应
+## Add fixed effects for breeds
 ((nA++))
 all_eff="$((num_int + 1)) ${all_eff}"
 
-################  基因型文件  #############
-##########################################
-## 品种内的基因型文件路径
+################  Genotype Files  #############
+###############################################
+## Paths to genotype files within breeds
 # IFS=" " read -r -a bfiles <<<"${bfileM} ${bfileW[*]}"
 if [[ ! ${debug} ]]; then
   if [[ ! ${bfileW} ]]; then
@@ -305,22 +301,22 @@ if [[ ! ${debug} ]]; then
   else
     IFS=" " read -r -a bfiles <<<"${bfileW}"
   fi
-  ## 检查fam/bim/bed文件是否存在
+  ## Check if fam/bim/bed files exist
   check_plink "${bfiles[@]}" ${nchr}
-  ## 生成各品种合并后的plink文件
-  if [[ ${type} != "multi" && ! -s ${gmat} ]] || [[ ${type} == "multi" ]]; then
+  ## Generate merged plink files for all breeds
+  if [[ ! -s ${gmat} ]]; then
     if [[ ${bfileM} ]]; then
       check_plink "${bfileM}" ${nchr}
     else
-      ## 合并plink文件
+      ## Merge plink files
       bfileM=${tpath}/merge
       merge_plink "${bfiles[*]}" ${bfileM}
     fi
   fi
 fi
 
-##################  参考群表型文件  ##############
-#################################################
+##################  Reference Population Phenotype Files  ##############
+########################################################################
 $pheMerge \
   --pops "${pops}" \
   --phef "${workdir}/#breed#/val#val#/rep#rep#/pheno.txt" \
@@ -328,13 +324,14 @@ $pheMerge \
   --fold ${fold} \
   --nInt ${num_int} \
   --type ${type} \
+  --method ${method} \
   --overwri ${overwrite} \
   --pheCol ${phereal} \
   --fixPop \
   --out "${tpath}/val#val#/rep#rep#/pheno.txt"
 
-#####################  系谱文件  #####################
-#####################################################
+#####################  Pedigree Files  #####################
+############################################################
 if [[ ${pedf} ]]; then
   for pedi in ${pedf}; do
     if [[ ! -s ${pedi} ]]; then
@@ -348,120 +345,122 @@ else
   [[ -s pedi_merge.txt ]] && rm pedi_merge.txt
 fi
 
-####################  基因组区域确定  ##################
-########################################################
-cd ${tpath} || exit
-## 基因组分区文件名
-if [[ ! -s ${binf} ]]; then
-  if [[ ${bin} == "fix" ]]; then
+####################  Determining Genomic Regions  ##################
+#####################################################################
+if [[ ${method} == 'mbBayesAB' ]]; then
+  cd ${tpath} || exit
+
+  if [[ ! -s ${binf} || ${overwrite} ]]; then
+    ## Filename prepare
+    if [[ ${bin} == "fix" ]]; then
     bin_prefix=${bin}_${nsnp_win}
-  elif [[ ${bin} == "lava" ]]; then
+    elif [[ ${bin} == "lava" ]]; then
     bin_prefix=${bin}_${ref}_${nsnp_win}
-  elif [[ ${bin} == "cubic" ]]; then
+    elif [[ ${bin} == "cubic" ]]; then
     bin_prefix=${bin}_${ref}_${win}
-  elif [[ ${bin} == "frq" || ${bin} == "ld" ]]; then
+    elif [[ ${bin} == "frq" || ${bin} == "ld" ]]; then
     bin_prefix=${bin}_${r2_merge}_${nsnp_win}
-  else
+    else
     echo "${bin} can only be fix, frq, ld or lava! "
     exit 1
-  fi
-  binf=${tpath}/${bin_prefix}.txt
-else
-  # binf_base=$(basename "${binf}")
-  # bin_prefix="${binf_base%.*}"
-  bin_prefix=self_bin
-  if [[ ${bincol} != 1 ]]; then
-    awk -v col=${bincol} '{print $col}' ${binf} > bin_col1.txt
-    binf=$(pwd)/bin_col1.txt
-  fi
-fi
-## 生成文件
-if [[ ${type} == 'multi' ]] && [[ ! -s ${binf} || ${overwrite} ]]; then
-  echo 'Generating genome regions file...'
-
-  ## 区间划分
-  if [[ ${bin} == "fix" ]]; then
-    if [[ ${nbin} ]]; then
-      nsnp=$(wc -l <${bfileM}.bim)
-      ## 约束最终划分的区间数与nbin相近
-      nsnp_win=$((nsnp / nbin))
-      echo "Number of SNPs per window set to: ${nsnp_win}"
     fi
+    binf=${tpath}/${bin_prefix}.txt
 
-    [[ ! ${debug} ]] && \
+    ## Partition blocks
+    echo 'Generating genome regions file...'
+    if [[ ${bin} == "fix" ]]; then
+      if [[ ${nbin} ]]; then
+        nsnp=$(wc -l <${bfileM}.bim)
+        ## Ensure the final number of partitions is close to nbin
+        nsnp_win=$((nsnp / nbin))
+        echo "Number of SNPs per window set to: ${nsnp_win}"
+      fi
+
+      [[ ! ${debug} ]] && \
+        $fix_frq_ld_bolck \
+          --win ${nsnp_win} \
+          --map ${bfileM}.bim \
+          --bin_merge ${bin} \
+          --out ${binf}
+    elif [[ ${bin} == "frq" || ${bin} == "ld" ]]; then
+      # ## Check if genotype files for each breed are provided
+      # [[ ! "${bfileW[*]}" ]] && echo "Required parameter 'bfileW' is missing! " && exit 1
+
+      ## Common markers among breeds
+      awk '{print $2}' ${bfileM}.bim >SNP_share_id.txt
+
+      ## LD calculation
+      for i in $(seq 0 $((np - 1))); do
+        plink --bfile ${bfiles[i]} \
+          --chr-set ${nchr} \
+          --extract SNP_share_id.txt \
+          --r2 \
+          --freq \
+          --ld-window-kb ${LD_maxD} \
+          --ld-window ${inter} \
+          --ld-window-r2 ${r2} \
+          --out ${popN[i]} >>${logp}/plink_ld_frq.log
+      done
+
+      ## Define blocks as required
       $fix_frq_ld_bolck \
-        --win ${nsnp_win} \
-        --map ${bfileM}.bim \
+        --prefixs "${popN[*]}" \
         --bin_merge ${bin} \
-        --out ${binf}
-  elif [[ ${bin} == "frq" || ${bin} == "ld" ]]; then
-    # ## 检查是否提供了每个品种的基因型文件 
-    # [[ ! "${bfileW[*]}" ]] && echo "Required parameter 'bfileW' is missing! " && exit 1
+        --win ${nsnp_win} \
+        --seg ${r2_merge} \
+        --map ${bfileM}.bim \
+        --out ${binf}~
 
-    ## 品种共有标记
-    awk '{print $2}' ${bfileM}.bim >SNP_share_id.txt
+      ## Extract a single-column file indicating the number of SNPs in each block
+      awk '{print $3}' ${binf}~ >${binf}
+    elif [[ ${bin} == "lava" || ${bin} == "cubic" ]]; then
+      ## Reference panel (population genomic data) used for partitioning
+      if [[ ${ref} == "M" ]]; then
+        ## Use the merged panel for all breeds
+        bfile_block=bfile${ref}  
+        bfile_block=${!bfile_block}
+      else
+        ## Use the panel of the reference breed, where the order matches fid in pops
+        bfile_block=${bfiles[((ref - 1))]}
+      fi
 
-    ## LD计算(只计算共有标记)
-    for i in $(seq 0 $((np - 1))); do
-      plink --bfile ${bfiles[i]} \
-        --chr-set ${nchr} \
-        --extract SNP_share_id.txt \
-        --r2 \
-        --freq \
-        --ld-window-kb ${LD_maxD} \
-        --ld-window ${inter} \
-        --ld-window-r2 ${r2} \
-        --out ${popN[i]} >>${logp}/plink_ld_frq.log
-    done
+      ## Generate partitioning file
+      $lava_cubic_bolck \
+        --bfile ${bfile_block} \
+        --win ${win} \
+        --maf ${maf} \
+        --type ${bin} \
+        --minSize ${nsnp_win} \
+        --out ${binf}~ >${logp}/${bin}_${ref}_block_${SLURM_JOB_ID}.log
 
-    ## 根据要求定义区间
-    $fix_frq_ld_bolck \
-      --prefixs "${popN[*]}" \
-      --bin_merge ${bin} \
-      --win ${nsnp_win} \
-      --seg ${r2_merge} \
-      --map ${bfileM}.bim \
-      --out ${binf}~
-
-    ## 评估软件所需区间文件
-    awk '{print $3}' ${binf}~ >${binf}
-  elif [[ ${bin} == "lava" || ${bin} == "cubic" ]]; then
-    ## 划分区间时所用的参考面板(群体基因信息)
-    if [[ ${ref} == "M" ]]; then
-      bfile_block=bfile${ref}  ## 用所有品种合并后的面板
-      bfile_block=${!bfile_block}
-    else
-      bfile_block=${bfiles[((ref - 1))]}  ## 使用第ref个品种的面板，索引顺序与pops中fid顺序一致
+      ## Extract a single-column file indicating the number of SNPs in each bin
+      sed '1d' ${binf}~ | awk '{print $5}' >${binf}
     fi
 
-    ## 生成区间划分文件
-    $lava_cubic_bolck \
-      --bfile ${bfile_block} \
-      --win ${win} \
-      --maf ${maf} \
-      --type ${bin} \
-      --minSize ${nsnp_win} \
-      --out ${binf}~ >${logp}/${bin}_${ref}_block_${SLURM_JOB_ID}.log
-
-    ## 提取出指示每个区间内SNP数的单列文件
-    sed '1d' ${binf}~ | awk '{print $5}' >${binf}
-  fi
-
-  ## 检查是否出错
-  if [[ ! -s ${binf} ]]; then
-    echo 'error in creat bins file! '
-    exit 1
+    ## Check for errors
+    if [[ ! -s ${binf} ]]; then
+      echo 'error in creating bins file! '
+      exit 1
+    fi
+  else
+    # binf_base=$(basename "${binf}")
+    # bin_prefix="${binf_base%.*}"
+    bin_prefix=self_bin
+    if [[ ${bincol} != 1 ]]; then
+      awk -v col=${bincol} '{print $col}' ${binf} > bin_col1.txt
+      binf=$(pwd)/bin_col1.txt
+    fi
   fi
 fi
 
-#####################  局部遗传相关  #####################
-#########################################################
+#####################  Local Genetic Correlation  #####################
+#######################################################################
 if [[ ${rg_local} && ${bin} == "lava" ]]; then
   summA=
   summB=
   if [[ -s ${summA}.assoc.txt && -s ${summB}.assoc.txt ]]; then
     echo "calculating local genetic correlations..."
-    ## 软件待修改
+    ## Software needs modification
     $local_rg \
       --pops ${pops} \
       --summ1 ${summA}.assoc.txt \
@@ -470,40 +469,40 @@ if [[ ${rg_local} && ${bin} == "lava" ]]; then
       --block ${binf}~ \
       --out ${binf}~ &>${logp}/${bin}_local_rg_${SLURM_JOB_ID}.log
   else
-    echo "Error: ${summA}.assoc.txt or ${summB}.assoc.txt ont found! "
+    echo "Error: ${summA}.assoc.txt or ${summB}.assoc.txt not found! "
     exit 1
   fi
 fi
 
-#####################  方差组分准备  #####################
-#########################################################
-## 方差组分文件名
+#####################  Variance Components Preparation  ####################
+############################################################################
 if [[ ${priorVar} ]]; then
+  ## Variance components file name
   parfA=$(basename "$(find ${workdir}/${A} -name "*PAROUT" | head -n 1)")
   parfB=$(basename "$(find ${workdir}/${B} -name "*PAROUT" | head -n 1)")
 
-  ## 每个区间协方差先验不同
+  ## Different covariance priors for each block
   [[ ${rg_local} ]] && rg_local=" --rg_local ${binf}~ "
 
   if [[ ${priorVar} == "pheno" ]]; then
-    ## 根据表型方差推算遗传和残差方差
+    ## Calculate genetic and residual variances based on phenotypic variance
     varf_para1="${workdir}/${A}/val#val#/rep#rep#/pheno.txt"
     varf_para2="${workdir}/${B}/val#val#/rep#rep#/pheno.txt"
   elif [[ ${priorVar} == "predict" ]]; then
-    ## 用品种内评估的方差推算多品种遗传和残差方差
+    ## Calculate multi-breed genetic and residual variances based on within-breed prediction variances
     varf_para1="${workdir}/${A}/val#val#/rep#rep#/${parfA}"
     varf_para2="${workdir}/${B}/val#val#/rep#rep#/${parfB}"
   elif [[ ${priorVar} == "A" ]]; then
-    ## 用A品种内估计的方差组分
+    ## Use variance components estimated within breed A
     varf_para1="${workdir}/${A}/val#val#/rep#rep#/${parfA}"
     varf_para2="null"
   elif [[ ${priorVar} == "B" ]]; then
-    ## 用B品种内估计的方差组分
+    ## Use variance components estimated within breed B
     varf_para1="${workdir}/${B}/val#val#/rep#rep#/${parfB}"
     varf_para2="null"
   fi
 
-  ## 生成方差组分(初值)文件
+  ## Generate variance components (initial values) file
   $variance_prior \
     --filea ${varf_para1} \
     --fileb ${varf_para2} \
@@ -514,6 +513,7 @@ if [[ ${priorVar} ]]; then
     --rg ${rg} \
     --re ${re} \
     --type ${type} \
+    --method ${method} \
     --var ${priorVar} \
     --norec \
     --add_rf ${add_rf} \
@@ -523,10 +523,10 @@ if [[ ${priorVar} ]]; then
     --out ${tpath}/val#val#/rep#rep#/${type}_${dirPre}${bin}_prior.txt
 fi
 
-#####################  关系矩阵准备  #####################
-##########################################################
-if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
-  ## 生成基因型关系矩阵G阵
+#####################  Relationship Matrix Preparation  #####################
+#############################################################################
+if [[ ${method} =~ 'GBLUP' ]]; then
+  ## Generate the Genotype Relationship Matrix (G-matrix)
   if [[ -s ${gmat} ]]; then
     if [[ ${method} == "ssGBLUP" && ! -s ${gidf} ]]; then
       echo "${gidf} not found! " && exit 1
@@ -534,7 +534,7 @@ if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
       echo "Use user provided relationship matrix: ${gmat}"
     fi
   elif [[ ${GmatM} == 'multi' ]]; then
-    ## 多品种关系矩阵
+    ## Multi-breed relationship matrix
     [[ ! "${bfileW[*]}" ]] && echo "Required parameter 'bfileW' is missing! " && exit 1
 
     :> all_breed.id
@@ -544,7 +544,7 @@ if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
       idf="${bfileW[i]}.ids ${idf}"
     done
 
-    ## 格式转换，顺便剔除存在缺失的位点(只存在某个群体中的位点)
+    ## Format conversion, remove loci with missing values (loci present in only one breed)
     plink \
       --bfile ${bfileM} \
       --chr-set ${nchr} \
@@ -552,14 +552,14 @@ if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
       --recode A \
       --out merge >>${logp}/plink_recodeA.log
 
-    ## 多品种关系矩阵（待修改）
+    ## Multi-breed relationship matrix (need to be modified)
     $multiG \
       --rawf merge.raw \
       --idf ${idf} \
       --out merge
     mv merge.grm merge.agrm.id_fmt
   elif [[ ${GmatM} == 'single' ]]; then
-    ## 生成基因型关系矩阵G阵
+    ## Generate the Genotype Relationship Matrix (G-matrix)
     if [[ ${method} == "GBLUP" ]]; then
       gmat_inv="--inv"
       [[ ! ${gmat} ]] && gmat=${tpath}/merge.agiv.id_fmt
@@ -569,22 +569,22 @@ if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
       [[ ! ${gidf} ]] && gidf=${tpath}/merge.id
     fi
 
-    ## 构建基因组关系矩阵
+    ## Construct the Genomic Relationship Matrix
     echo "Read the plink bed file and Calculate the additive G matrix..."
     [[ ! ${debug} ]] && gmatrix --bfile ${bfileM} --grm agrm --out ${tpath}/merge ${gmat_inv}
     echo "G matrix created."
 
-    ## 改名
+    ## Rename
     if [[ ${method} == "GBLUP" ]]; then
-      ## 若指定了gmat文件名，则改名(同时可能移动文件)
+      ## If gmat file name is specified, rename (and possibly move) the file
       [[ ${gmat} && ! -s ${gmat} ]] && \
         mv merge.agiv.id_fmt ${gmat} && \
-        echo "gamt created and has been rename to: ${gmat}"
+        echo "gmat created and has been renamed to: ${gmat}"
     elif [[ ${method} == "ssGBLUP" ]]; then
-      ## 若指定了gmat文件名，则改名(同时可能移动文件)
+      ## If gmat file name is specified, rename (and possibly move) the file
       [[ ${gmat} && ! -s ${gmat} ]] && \
         mv merge.agrm.id_fmt ${gmat} && \
-        echo "gamt created and has been rename to: ${gmat}"
+        echo "gmat created and has been renamed to: ${gmat}"
       [[ ${gidf} && ! -s ${gidf} ]] && mv ${tpath}/merge.id ${gidf}
     fi
   else
@@ -593,15 +593,16 @@ if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
   fi
 fi
 
-###################  dmu参数卡  ####################
-####################################################
-cd ${tpath} || exit
-if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
+###################  DMU Parameter File  ####################
+#############################################################
+if [[ ${method} =~ 'GBLUP' ]]; then
+  cd ${tpath} || exit
+
   ## ANALYSE
   [[ ${dmu4} ]] && ANALYSE="11 9 0 0" || ANALYSE="1 ${method_dmu} 0 0"
 
   ## MODEL
-  if [[ ${type} == 'blend' ]]; then
+  if [[ ${type} == 'single' ]]; then
     num_real=1
     MODEL="1\n0\n1 0 ${nA} ${all_eff}\n${nR} ${ran_eff}\n0\n0"
   else
@@ -614,9 +615,9 @@ if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
     for i in $(seq 2 ${np}); do
       ABSORB="${ABSORB}\n0"
       MODELS="${MODELS}\n${i} 0 ${nA} ${all_eff}"
-      RANDOMS="${RANDOMS}\n${nR} ${ran_eff}" # RANDOM为shell关键字，故改名
+      RANDOMS="${RANDOMS}\n${nR} ${ran_eff}" # RANDOM is a shell keyword, so renamed
       REGRES="${REGRES}\n0"
-      for j in $(seq 1 $((i -1))); do
+      for j in $(seq 1 $((i - 1))); do
         NOCOV="${NOCOV}\n${j} ${i}"
         ((nNOCOV++))
       done
@@ -626,8 +627,8 @@ if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
     MODEL="${np}\\n${ABSORB}\\n${MODELS}\\n${RANDOMS}\\n${REGRES}\\n${nNOCOV}${NOCOV}"
   fi
 
-  ## 写出参数卡
-  [[ -s ${DIR}.DIR ]] && echo "warn: ${DIR}.DIR has been overwrited! "
+  ## Write out the parameter file
+  [[ -s ${DIR}.DIR ]] && echo "warn: ${DIR}.DIR has been overwritten! "
   {
     echo "\$COMMENT"
     echo "get EBV of individuals in validation population with reduced phenotypes"
@@ -637,7 +638,7 @@ if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
     echo "\$PRIOR %varf%"
   } >${DIR}.DIR
 
-  ## 方差组分结构
+  ## Variance component structure
   if [[ ${method} == "GBLUP" ]]; then
     echo "\$VAR_STR ${add_rf} GREL ASCII ${gmat}" >>${DIR}.DIR
     add_sol=3
@@ -654,35 +655,35 @@ if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
     exit 1
   fi
 
-  ## 输出效应值
+  ## Output effect values
   echo "\$SOLUTION" >>${DIR}.DIR
 fi
 
-#####################  子集处理和评估  ###################
-##########################################################
-for r in $(seq 1 ${rep}); do # r=1;f=1
+
+#####################  Subset Processing and prediction  #####################
+##############################################################################
+for r in $(seq 1 ${rep}); do
   for f in $(seq 1 ${fold}); do
-    ## 更改工作文件夹
+    ## Change working directory
     vali_path=${tpath}/val${f}/rep${r}
     cd ${vali_path} || exit
 
-    ## 如果为调试模式则跳过估计育种值步骤
+    ## Skip breeding value estimation if in debug mode
     [[ ${debug} ]] && continue
 
-    #####  GBLUP模型  #####
-    #######################
-    if [[ ${type} == 'blend' || ${type} == 'union' ]]; then
-      ## 拷贝DMU参数卡
+    ## (ss)GBLUP Model
+    if [[ ${method} =~ 'GBLUP' ]]; then
+      ## Copy DMU parameter file
       cp ${tpath}/${DIR}.DIR .
 
-      ## 根据需要提供方差组分(或迭代初值)
+      ## Provide variance components (or initial values) as needed
       if [[ -s ${type}_${dirPre}${bin}_prior.txt ]]; then
         sed -i "s#%varf%#${type}_${dirPre}${bin}_prior.txt#" ${DIR}.DIR
       else
         sed -i '/$PRIOR/d' ${DIR}.DIR
       fi
 
-      ## 育种值估计
+      ## Breeding value estimation
       if [[ ${dmu4} ]]; then
         job_pool_run run_dmu4 ${DIR} ${vali_path}
       else
@@ -690,12 +691,12 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
       fi
     fi
 
-    ##### MT-BayesABLD模型 #####
-    ############################
-    if [[ ${type} == 'multi' ]]; then
-      ## 固定效应
-      fix_eff=${all_eff%" ${ran_eff}"}
+    ## Fixed effects
+    fix_eff=${all_eff%" ${ran_eff}"}
 
+    ## MT-BayesABLD Model
+    if [[ ${method} == 'mbBayesAB' ]]; then
+      ## Get GEBVs
       job_pool_run mbBayesABLD \
         --bfile ${bfileM} \
         --phef ${vali_path}/pheno.txt \
@@ -714,51 +715,82 @@ for r in $(seq 1 ${rep}); do # r=1;f=1
         --logf ${bin}_${r2_merge}_${nsnp_win}_gibs_${SLURM_JOB_ID}.log \
         ${noCov}
     fi
+
+    if [[ ${method} == 'bayesR' ]]; then
+      if [[ ${type} == 'single' ]]; then
+        ## Get GEBVs
+        job_pool_run $bayesR \
+          --proj "${vali_path}" \
+          --bfile "${bfileM}" \
+          --fix "${fix_eff}" \
+          --iter ${iter} \
+          --burnin ${burnin} \
+          --seed ${seed} \
+          --gebv_out "EBV_bayesR.txt"
+      else
+        echo "Not currently supported! "
+        exit 2
+      fi
+    fi
   done
 done
 
-## 等待后台程序运行完毕
+## Wait for background jobs to finish
 [[ ! ${debug} ]] && job_pool_wait
-## 释放线程
+## Release cpus
 [[ ! ${debug} ]] && job_pool_shutdown
 
-####################  准确性计算  ##################
-###################################################
-## 更换工作路径
+####################  Accuracy Calculation  ##################
+##############################################################
+## Change working directory
 cd ${tpath} || exit
-## 准确性计算参数
+
+## Accuracy calculation parameters
 if [[ ${tbv_col} == "same" ]]; then
   option=" --tbv_col $((num_int + phereal))"
 elif [[ ${tbv_col} ]]; then
   option=" --tbv_col ${tbv_col}"
 fi
 [[ ${tbvf} ]] && option="${option} --tbvf ${tbvf} "
-## 其他参数
-if [[ ${type} == 'multi' ]]; then
-  ## MT-Bayes模型
-  option="${option} --ebvf ${tpath}/val#val#/rep#rep#/EBV_${bin}_y%i%.txt"
-  ebv_col=2
-else
-  ## MT-GBLUP模型
+
+## Other parameters
+if [[ ${method} =~ 'BLUP' ]]; then
   option="${option} --add_sol ${add_sol} --dir_val ${tpath}/val#val#/rep#rep#/${DIR}"
-  if [[ ${type} == 'blend' ]]; then
+  if [[ ${type} == 'single' ]]; then
+    ## ST-GBLUP model
     ebv_col=1
   else
+    ## MT-GBLUP model
     ebv_col=%i%
   fi
+else
+  ## GEBVs filename
+  if [[ ${method} == "bayesR" ]]; then
+    gebvf=EBV_bayesR.txt
+  else
+    gebvf=EBV_${bin}_y1.txt
+  fi
+
+  ## MT-Bayes model
+  option="${option} --ebvf ${tpath}/val#val#/rep#rep#/${gebvf}"
+  ebv_col=2
 fi
-## 计算准确性
+
+## Calculate accuracy
 for i in $(seq 0 $((np - 1))); do
   ip1=$((i+1))
-  ## 输出文件名
-  if [[ ${type} == 'multi' ]]; then
+  ## Output file name
+  if [[ ${method} == 'mbBayesAB' ]]; then
     outf=${out}_${dirPre}_${bin}_${popN[${i}]}.txt
     [[ ${bin} == 'lava' ]] && outf=${out}_${ref}_${dirPre}_${bin}_${popN[${i}]}.txt
   else
     outf=${out}_${popN[${i}]}.txt
   fi
 
-  ## 计算准确性
+  ## Replace possible double underscores
+  outf=${outf/__/_}
+
+  ## Calculate accuracy
   $accur_cal \
     --ebv_col ${ebv_col/\%i\%/${ip1}} \
     --val_idf ${workdir}/${popN[${i}]}/val#val#/rep#rep#/${vidf} \
@@ -769,13 +801,13 @@ for i in $(seq 0 $((np - 1))); do
     --out ${tpath}/${outf}
 done
 
-#################  BayesABLD 模型收敛作图  #################
-#########################################################
-## BayesABLD 模型 收敛作图
+#################  BayesABLD Model Convergence Plotting  #################
+##########################################################################
+## BayesABLD Model Convergence Plotting
 if [[ ${type} == 'multi' ]]; then
   if [[ ${traceplot} ]]; then
     for r in $(seq 1 ${rep}); do
-      ## Bayes MCMC链作图
+      ## Plot Bayes MCMC Chains
       for f in $(seq 1 ${fold}); do
         $MCMC_polt \
           --files ${vali_path}/${bin}_MCMC_process.txt \
@@ -789,7 +821,7 @@ if [[ ${type} == 'multi' ]]; then
   fi
 fi
 
-###################  删除中间文件  #####################
-########################################################
-## 基因型文件
+###################  Delete Intermediate Files  #####################
+#####################################################################
+## Genotype files
 # [[ ${bfileM} && ${bfileM} =~ rmMiss ]] && rm ${bfileM}.*

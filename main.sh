@@ -1,11 +1,11 @@
 #!/bin/usr/bash
 
 ########################################################################################################################
-## Version:   1.2.0
+## Version:   1.3.0
 ## Author:    Liweining liwn@cau.edu.cn
 ## Orcid:     0000-0002-0578-3812
 ## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
-## Date:      2024-07-07
+## Date:      2024-08-21
 ##
 ## Function：
 ##  Used to reproduce the research results in the article "Multi-trait Bayesian models enhance the accuracy of genomic 
@@ -27,23 +27,21 @@
 ########################################################################################################################
 
 
-
 ## Initialize the script, modify some paths in the script (path need to be modefied)
 # /public/home/liujf/liwn/code/GitHub/mbBayesABLDLD/initialize.sh
 
 ## Path of main script
 code=/public/home/liujf/liwn/code/GitHub/mbBayesABLD
 GP_cross=${code}/shell/GP_cross_validation.sh
-combination=${code}/R/array_combination.R
 
-## 将程序路径加到环境变量中
+## Add the program path to the environment variable
 export PATH=${code}/bin:$PATH
 
 
 ###########################################################################################
-## 
+##
 ##  Real date
-## 
+##
 ###########################################################################################
 
 for source in Xie2021 Keller2022; do
@@ -54,12 +52,19 @@ for source in Xie2021 Keller2022; do
 
   ## files
   data_path=${code}/data/Real/${source}
-  seed=$(cat "${data_path}/random.seed")
   bfile=${data_path}/genotype
   phef=${data_path}/phenotype.txt
   IFS=" " read -r -a breeds <<< "$(cat ${data_path}/breeds.txt)"
   IFS=" " read -r -a traits_all <<< "$(cat ${data_path}/traits_all.txt)"
   IFS=" " read -r -a traits_cal <<< "$(cat ${data_path}/traits_analysis.txt)"
+
+  ## random number seed
+  if [[ -s ${data_path}/random.seed ]]; then
+    seed=$(cat "${data_path}/random.seed")
+  else
+    seed=$RANDOM
+    echo ${seed} >${data_path}/random.seed
+  fi
 
   ## Calculate corrected phenotype
   if [[ ${source} == "Xie2021" ]]; then
@@ -82,6 +87,11 @@ for source in Xie2021 Keller2022; do
         --type adj
       sleep 5
     done
+
+    ## Wait for the correction phenotype calculation to be completed
+    while [[ $(wc -l 2>/dev/null <${pro}/${traits_all[-1]}/${breeds[-1]}/phe_adj_BLUP.SOL) -lt 10 ]]; do
+      sleep 3
+    done
   else
     ## The phenotype from keller are BLUEs, and there is no need to calculate corrected phenotype
     tbv_col=" --tbv_col same "
@@ -90,60 +100,73 @@ for source in Xie2021 Keller2022; do
     all_eff="2 1"
   fi
 
-  ## Wait for the correction phenotype calculation to be completed
-  while [[ $(wc -l 2>/dev/null <${pro}/${traits_all[-1]}/${breeds[-1]}/phe_adj_BLUP.SOL) -lt 10 ]]; do
-    sleep 3
-  done
-
   ## Calculate the accuracy of GBLUP model in within-breed prediction
   for trait in "${traits_cal[@]}"; do
-    sbatch -c50 --mem=100G --output=${pro}/log/within.log \
-      $GP_cross \
-      --proj ${pro} \
-      --breeds "${breeds[*]}" \
-      --traits "${traits_all[*]}" \
-      --trait "${trait}" \
-      --bfile "${bfile}" \
-      --phef "${phef}" \
-      --seed "${seed}" \
-      --all_eff "${all_eff}" \
-      ${tbv_col} \
-      --code "${code}" \
-      --rep 10 \
-      --fold 5 \
-      --type within
-    sleep 5
-  done
-
-  ## Calculate the accuracy of GBLUP model in multi-breed prediction
-  for trait in "${traits_cal[@]}"; do
-    for type in blend union; do
-      while IFS= read -r breed_comb; do
-        sbatch -c50 --mem=80G --output=${pro}/log/${type}.log \
-          $GP_cross \
-          --type "${type}" \
+    for breed in "${breeds[@]}"; do
+      sbatch -c50 --mem=100G --output=${pro}/log/within_${trait}_${breed}.log \
+        $GP_cross \
           --proj "${pro}" \
-          --breeds "${breed_comb}" \
+          --breeds "${breed}" \
           --traits "${traits_all[*]}" \
           --trait "${trait}" \
-          --code "${code}" \
+          --bfile "${bfile}" \
           --phef "${phef}" \
+          --seed "${seed}" \
+          --all_eff "${all_eff}" \
           ${tbv_col} \
-          --seed ${seed} \
+          --code "${code}" \
           --thread 50 \
-          --suffix
-        sleep 5
-      done <"${data_path}/breeds_combination.txt"
+          --rep 10 \
+          --fold 5 \
+          --type within
+      sleep 5
     done
   done
 
-  ## Calculate the accuracy of Bayes multi-breed prediction
+  ## Calculate the accuracy of GBLUP model in multi-breed prediction with single-trait model
   for trait in "${traits_cal[@]}"; do
     while IFS= read -r breed_comb; do
+      for method in GBLUP bayesR; do
+        sbatch -c50 --mem=80G --output=${pro}/log/single_${trait}_${method}.log \
+          $GP_cross \
+            --type "single" \
+            --method "${method}" \
+            --proj "${pro}" \
+            --breeds "${breed_comb}" \
+            --traits "${traits_all[*]}" \
+            --trait "${trait}" \
+            --code "${code}" \
+            --phef "${phef}" \
+            --seed "${seed}" \
+            --thread 50 \
+            --suffix \
+            ${tbv_col}
+        sleep 5
+      done
+
+      ## Calculate the accuracy of GBLUP model in multi-breed prediction with multi-trait GBLUP model
+      sbatch -c50 --mem=80G --output=${pro}/log/multi_${method}.log \
+        $GP_cross \
+        --type "multi" \
+        --method "GBLUP" \
+        --proj "${pro}" \
+        --breeds "${breed_comb}" \
+        --traits "${traits_all[*]}" \
+        --trait "${trait}" \
+        --code "${code}" \
+        --phef "${phef}" \
+        ${tbv_col} \
+        --seed ${seed} \
+        --thread 50 \
+        --suffix
+      sleep 5
+
+      ## Calculate the accuracy of GBLUP model in multi-breed prediction with multi-trait Bayesian model
       for bin in fix lava cubic; do
-        sbatch -c50 --mem=80G --output=${pro}/log/${bin}.log \
+        sbatch -c50 --mem=80G --output=${pro}/log/mbBayesAB_${bin}.log \
           $GP_cross \
           --type multi \
+          --method "mbBayesAB" \
           --proj ${pro} \
           --breeds "${breed_comb}" \
           --traits "${traits_all[*]}" \
@@ -155,7 +178,7 @@ for source in Xie2021 Keller2022; do
           --thread 50 \
           --bin ${bin} \
           --suffix
-        sleep 10
+        sleep 5
       done
     done <"${data_path}/breeds_combination.txt"
   done
@@ -174,14 +197,14 @@ for source in Xie2021 Keller2022; do
         --bfile ${bfile} \
         --phef ${phef} \
         --seed ${seed} \
-        --method BayesAS \
+        --type within \
+        --method mbBayesAB \
         --binf ${binf} \
         ${tbv_col} \
         --code ${code} \
         --rep 10 \
         --fold 5 \
-        --type within \
-        --out accur_BayesAS.txt
+        --out accur_BayesABLD.txt
       sleep 5
     done
   done
@@ -192,9 +215,7 @@ for source in Xie2021 Keller2022; do
       --type ${type} \
       --proj ${pro} \
       --breeds "${breeds[*]}" \
-      --bin "fix lava cubic" \
-      --traits "${traits_cal[*]}" \
-      --code ${code}
+      --traits "${traits_cal[*]}"
   done
 done
 
@@ -205,17 +226,33 @@ done
 ## 
 ###########################################################################################
 
-for scene in Two Three; do # scene=Three;r=1;dist=identical;cor=0.2;bin=lava
-  for r in {1..20}; do
-    data_path=${code}/data/Simulation/${scene}Breeds
-    pro=${code}/output/${scene}Breeds
-    proi=${code}/output/${scene}Breeds/rep${r}
-    mkdir -p ${pro}
-    cd ${pro} || exit
+for scene in Two Three; do
+  data_path=${code}/data/Simulation/${scene}Breeds
+  pro=${code}/output/${scene}Breeds
 
-    ## Generating simulated populations using QMSim
-    sed "s#%seed_file%#${data_path}/QMSim_rep${r}_seed.prv#g" ${data_path}/QMSim.prm >QMSim_rep${r}.prm
-    sed -i "s#%nthread%#20#g" QMSim_rep${r}.prm
+  mkdir -p ${pro}
+  cd ${pro} || exit
+
+  ## reference combinations
+  if [[ ${scene} == Two ]]; then
+    breed_comb=("A B")
+  else
+    breed_comb=("A B" "A C" "A B C")
+  fi
+
+  for r in {1..20}; do
+    proi=${pro}/rep${r}
+
+    ## prepare QMSim parameter card
+    sed "s#%nthread%#20#g" ${data_path}/QMSim.prm >QMSim_rep${r}.prm
+    if [[ -s ${data_path}/QMSim_rep${r}_seed.prv ]]; then
+      sed -i "/%seed_file%/d" QMSim_rep${r}.prm
+    else
+      sed -i "s#%seed_file%#${data_path}/QMSim_rep${r}_seed.prv#g" QMSim_rep${r}.prm
+    fi
+    sed -i "s#%output_folder%#rep${r}#g" QMSim_rep${r}.prm
+
+    ## run QMSim
     srun -c20 --mem=100G \
       QMSim QMSim_rep${r}.prm
 
@@ -240,29 +277,32 @@ for scene in Two Three; do # scene=Three;r=1;dist=identical;cor=0.2;bin=lava
     ## Random number seed
     seed=$(cat ${pro}/rep${r}/random.seed)
 
-    ## genome partitioning
+    ## genome partitioning file name
     if [[ ${scene} == "Two" ]]; then
       phe_geno="${pro}/rep${r}/merge"
       phe_bin="${pro}/rep${r}/cubic_M_50_psim.txt"
     else
-      plink \
-        --bfile ${pro}/rep${r}/Am \
-        -bmerge ${pro}/rep${r}/Bm \
-        --make-bed \
-        --out ${pro}/rep${r}/ABm
+      [[ ! -s ${pro}/rep${r}/ABm.fam ]] && \
+        plink \
+          --bfile ${pro}/rep${r}/Am \
+          -bmerge ${pro}/rep${r}/Bm \
+          --make-bed \
+          --out ${pro}/rep${r}/ABm
       phe_geno="${pro}/rep${r}/ABm"
       phe_bin="${pro}/rep${r}/cubic_AB_50_psim.txt"
     fi
+
+    ## genome partitioning
     $GP_cross \
       --type bin \
       --proj ${proi} \
-      --bfile ${pro}/rep${r}/merge \
+      --bfile ${phe_geno} \
       --bin "cubic" \
       --nsnp_win "50" \
       --nsnp_sim "100" \
       --out "${phe_bin}"
 
-    for dist in uniform; do
+    for dist in identical uniform; do
       for cor in ${cors}; do
         proi=${pro}/rep${r}/${dist}/cor${cor}
         mkdir -m 777 -p ${proi}
@@ -283,12 +323,12 @@ for scene in Two Three; do # scene=Three;r=1;dist=identical;cor=0.2;bin=lava
           --nbin_cor "10" \
           --evenly \
           --min "30" \
-          --binf ${pro}/rep${r}/cubic_AB_50_psim.txt \
+          --binf ${phe_bin} \
           --seed ${seed}
 
         ## Calculate the accuracy of GBLUP model in within-breed prediction
         for b in ${breed_sim}; do
-          sbatch -c50 --mem=100G --output=${pro}/rep${r}/log/within.log  \
+          sbatch -c50 --mem=100G --output=${pro}/rep${r}/log/within_${b}.log  \
             $GP_cross \
               --type within \
               --proj ${proi} \
@@ -309,51 +349,73 @@ for scene in Two Three; do # scene=Three;r=1;dist=identical;cor=0.2;bin=lava
           sleep 3
         done
 
-        ## Calculate the accuracy of GBLUP model in multi-breed prediction
-        for type in blend union; do
-          [[  -d ${proi}/${type}_${breed_sim// /_} ]] && continue
-          sbatch -c50 --mem=100G $GP_cross \
-            --type ${type} \
-            --proj ${proi} \
-            --breeds "${breed_sim}" \
-            --bfile ${pro}/rep${r}/merge \
-            --phef ${proi}/pheno_sim.txt \
-            --code ${code} \
-            --suffix \
-            --thread 50 \
-            --seed ${seed} \
-            --tbv_col 6
-          sleep 5
-        done
+        for bc in "${breed_comb[@]}"; do
+          for method in bayesR; do
+            [[ -s ${proi}/single_${bc// /_}/accur_bayesR_A.txt ]] && \
+              echo "rep=${r} ${dist} ${cor}" && \
+              continue
 
-        ## Calculate the accuracy of Bayes multi-breed prediction
-        for bin in fix lava cubic; do
-          [[ -s ${proi}/multi_${breed_sim// /_}/val1/rep1/EBV_${bin}_y1.txt ]] && continue
-          sbatch -c50 --mem=100G $GP_cross \
-            --type multi \
-            --proj ${proi} \
-            --breeds "${breed_sim}" \
-            --bfile ${pro}/rep${r}/merge \
-            --phef ${proi}/pheno_sim.txt \
-            --thread 50 \
-            --code ${code} \
-            --seed ${seed} \
-            --suffix \
-            --tbv_col 6 \
-            --bin ${bin}
-          sleep 30
+            sbatch -c50 --mem=100G --output=${proi}/log/single_${method}.log \
+              $GP_cross \
+                --type "single" \
+                --method "${method}" \
+                --proj ${proi} \
+                --breeds "${bc}" \
+                --phef ${proi}/pheno_sim.txt \
+                --code ${code} \
+                --suffix \
+                --thread 50 \
+                --seed ${seed} \
+                --tbv_col 6
+            sleep 10
+          done
+
+          ## Calculate the accuracy of GBLUP model in multi-breed prediction with multi-trait GBLUP model
+          sbatch -c50 --mem=80G --time=2:00:00 --output=${proi}/log/multi_GBLUP.log \
+            $GP_cross \
+              --type "multi" \
+              --method "GBLUP" \
+              --proj ${proi} \
+              --breeds "${bc}" \
+              --bfile ${pro}/rep${r}/merge \
+              --phef ${proi}/pheno_sim.txt \
+              --code ${code} \
+              --suffix \
+              --thread 50 \
+              --seed ${seed} \
+              --tbv_col 6
+          sleep 5
+
+          ## Calculate the accuracy of GBLUP model in multi-breed prediction with multi-trait Bayesian model
+          for bin in fix lava cubic; do
+            sbatch -c50 --mem=80G --output=${proi}/log/${bin}.log \
+              $GP_cross \
+              --type multi \
+              --method "mbBayesAB" \
+              --phef ${proi}/pheno_sim.txt \
+              --bfile ${pro}/rep${r}/merge \
+              --proj ${proi} \
+              --breeds "${bc}" \
+              --code ${code} \
+              --tbv_col 6 \
+              --seed ${seed} \
+              --thread 50 \
+              --bin ${bin} \
+              --suffix
+            sleep 15
+          done
         done
 
         ## Calculate the accuracy of Bayes within-breed prediction
         binf=${proi}/multi_${breed_sim// /_}/cubic_M_50.txt
 
-        ## 等待品种内验证群划分完毕
+        ## Waiting for block file generation
         while [[ ! -s ${binf} ]]; do
           sleep 3
         done
 
         for b in ${breed_sim}; do
-          [[ -s "${proi}/${b}/accur_BayesAS.txt" ]] && continue
+          [[ -s "${proi}/${b}/accur_BayesABLD.txt" ]] && continue
           sbatch -c50 --mem=100G $GP_cross \
             --type within \
             --proj ${proi} \
@@ -362,7 +424,7 @@ for scene in Two Three; do # scene=Three;r=1;dist=identical;cor=0.2;bin=lava
             --phef ${proi}/pheno_sim.txt \
             --code ${code} \
             --binf ${binf} \
-            --method BayesAS \
+            --method mbBayesAB \
             --thread 50 \
             --tbv_col 6 \
             --seed ${seed} \
@@ -375,16 +437,13 @@ for scene in Two Three; do # scene=Three;r=1;dist=identical;cor=0.2;bin=lava
   done
 
   ## Statistical Accuracy and Variance Component Results
-  for type in accur var; do # type=accur $(seq -s " " 1 10)
+  for type in accur var; do
     $GP_cross \
       --type ${type} \
       --proj ${pro} \
       --rep "$(seq -s " " 1 20)" \
       --rg_dist "identical uniform" \
       --rg_sim "${cors}" \
-      --bin "fix lava cubic" \
-      --breeds "${breed_sim}" \
-      --code ${code} \
-      --out accuracy.txt
+      --breeds "${breed_sim}"
   done
 done

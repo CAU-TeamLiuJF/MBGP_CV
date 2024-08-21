@@ -1,19 +1,23 @@
 #!/usr/bin/bash
 
 ########################################################################################################################
-## 版本: 1.1.0
-## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-07-05
-## 
-## 简介: 使用ldblock将基因组根据ld信息划分成近似独立的ld块
-## 软件链接：https://github.com/cadeleeuw/lava-partitioning
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
 ##
-## 使用: lava_cubic_bolck.sh --help
+## Function：
+## Using ldblock to divide the genome into approximately independent ld blocks based on ld information
 ##
-## 依赖软件/环境: 
+##
+## Usage: ./lava_cubic_bolck.sh --bfile "/path/to/plink/binary/file/prefix" ...(Please refer to --help for detailed parameters)
+##
+## Dependent on software/environment:
 ##  1. ldblock
 ##  2. plink/1.9
-##  3. 其他R语言和Bash脚本
+##  3. Other R languages and Bash scripts
+##
 ##
 ## License:
 ##  This script is licensed under the GPL-3.0 License.
@@ -21,10 +25,10 @@
 ########################################################################################################################
 
 
-###################  参数处理  #####################
-####################################################
+###################  Parameter processing  #####################
+################################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
-## 参数名
+## Parse arguments
 TEMP=$(getopt -o h --long bfile:,type:,spar:,diff:,maf:,win:,jobs:,minSize:,code:,out:,keepTmp,plot \
   -n 'javawrap' -- "$@")
 if [ $? != 0 ]; then
@@ -33,7 +37,7 @@ if [ $? != 0 ]; then
 fi
 eval set -- "$TEMP"
 
-## 解析参数
+##  parse parameter
 while true; do
     case "$1" in
     --bfile )   bfile="$2";    shift 2 ;; ## PLINK_PREFIX
@@ -57,25 +61,7 @@ while true; do
     esac
 done
 
-## 软件加载
-# module load GCC/11.3.0
-if [ ! "$(command -v ldblock)" ]; then
-  echo "command \"ldblock\" does not exists on system! "
-  exit 1
-fi
-if [ ! "$(command -v plink)" ]; then
-  echo "command \"plink\" does not exists on system! "
-  exit 1
-fi
-if [[ ${type} == "cubic" && ! "$(command -v LD_mean_r2)" ]]; then
-  echo "command \"LD_mean_r2\" does not exists on system! "
-  exit 1
-fi
-
-## 避免执行R脚本时的警告("ignoring environment value of R_HOME")
-unset R_HOME
-
-## 脚本所在文件夹
+## Folder containing the scripts
 if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
@@ -83,11 +69,22 @@ else
   code=$(dirname "$script_path")
 fi
 
-## 软件/脚本
+## Software/scripts
 Rcubic=${code}/R/cubic_smoothing_block.R
 job_pool=${code}/shell/parallel_jobs_func.sh
+func=${code}/shell/function.sh
 
-## 其他默认参数
+## Load custom functions
+[[ ! -s ${func} ]] && echo "Error: ${func} not found! " && exit 5
+source ${func}
+
+## Check if required programs are in the environment path and executable
+check_command plink ldblock LD_mean_r2
+
+## Avoid warnings when running R scripts ("ignoring environment value of R_HOME")
+unset R_HOME
+
+## Default parameters
 out=${out:=ldblock.txt}
 type=${type:=cubic}
 spar=${spar:=0.2}
@@ -101,7 +98,7 @@ minSize=${minSize:=50}
 jobs=${jobs:=5}
 nchr=${nchr:=30}
 
-## 检查文件格式
+## Check file format
 if [[ ! -s ${bfile}.bim ]]; then
   if [[ -s ${bfile}.map ]]; then
     plink --file ${bfile} --chr-set ${nchr} --make-bed --out ${bfile}
@@ -111,30 +108,31 @@ if [[ ! -s ${bfile}.bim ]]; then
   fi
 fi
 
-## 并行作业数
+## Number of parallel jobs
 source ${job_pool}
 job_pool_init ${jobs} 0
 
-## 随机种子，防止不同进程之间干扰
+## Random seeds to prevent interference between different processes
 seed=$RANDOM
 
-## 染色体信息
+## Chromosome information
 chrs=$(awk '{print $1}' ${bfile}.bim | sort -n | uniq)
 nchr=$(echo ${chrs} | tr " " "\n" | wc -l)
 
-## 报告
+## Report
 echo "Panel for bin definition: $bfile"
 echo "Number of chromosomes in panel: $nchr"
 
-## 每条染色体进行区间划分
+## Divide each chromosome into blocks
 for chr in ${chrs}; do
-  ## 提取染色体信息
+  ## Extract chromosome information
   plink --bfile ${bfile} --chr-set ${nchr} --chr ${chr} --make-bed --out ld_block_tmp.${seed}.${chr} >/dev/null
 
-  ## SNP数目少于区间最少标记数，则跳过，未检测到结果文件会将这条染色体单独划分在一个区间
+  ## If the number of SNPs is less than the minimum number of markers in the interval, it will be skipped.
+  ## If no results are detected, the chromosome will be separately divided into an interval in the result file
   [[ $(wc -l <ld_block_tmp.${seed}.${chr}.bim) -lt ${minSize} ]] && continue
 
-  ## 区间划分
+  ## Genome partitioning
   if [[ ${type} == "lava" ]]; then
     ldblock \
       ld_block_tmp.${seed}.${chr} \
@@ -155,11 +153,11 @@ for chr in ${chrs}; do
   fi
 done
 
-## 等待后台程序运行完毕
+## Waiting for the backend program to finish running
 job_pool_wait
 job_pool_shutdown
 
-## 准备区间文件
+## Prepare block files
 : >ld_block_tmp.${seed}.breaks
 for chr in ${chrs}; do
   block_file=ld_block_tmp.${seed}.${chr}.breaks
@@ -168,12 +166,12 @@ for chr in ${chrs}; do
     if [[ ${type} == "lava" ]]; then
       nblock=$(($(wc -l <${block_file}) - 2))
 
-      ## 准备区间文件
+      ## Prepare block files
       mapfile -t -O 1 start < <(awk -v lines="$(wc -l <${block_file})" 'NR>1 && NR<lines {print $6}' ${block_file})
       mapfile -t -O 1 stop < <(awk 'NR>2 {print $6-1}' ${block_file})
       mapfile -t -O 1 nsnp < <(awk 'NR > 2 {print $5 - prev} {prev = $5}' ${block_file})
 
-      ## 输出到文件
+      ## Output to file
       for line in $(seq ${nblock}); do
         echo "${chr} ${start[line]} ${stop[line]} ${nsnp[line]}" >>ld_block_tmp.${seed}.breaks
       done
@@ -194,10 +192,10 @@ for chr in ${chrs}; do
   fi
 done
 
-## 增加序列行
+## Add sequence lines
 awk '{print NR, $0}' ld_block_tmp.${seed}.breaks >${out}
 
-## 检查标记数目
+## Check the number of markers
 nsnp_bin=$(awk '{sum+=$5}END{print sum}' ${out})
 if [[ ${nsnp_bin} -ne $(wc -l <${bfile}.bim) ]]; then
   echo "number of snp in bin file (${nsnp_bin}) are not equal to bfile ($(wc -l <${bfile}.bim))! "
@@ -206,12 +204,12 @@ if [[ ${nsnp_bin} -ne $(wc -l <${bfile}.bim) ]]; then
   exit 2
 fi
 
-## 插入标题行
+## Insert title line
 sed -i '1i LOC CHR START STOP nSNP' ${out}
 
-## 删除中间文件
+## Delete intermediate files
 [[ ! ${keepTmp} ]] && rm ld_block_tmp.${seed}*
 
-## 报告
+## Report
 echo "number of blocks: $(sed '1d' ${out} | wc -l)"
 echo "blocks information file output to: ${out}"

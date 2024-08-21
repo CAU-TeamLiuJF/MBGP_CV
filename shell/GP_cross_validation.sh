@@ -21,107 +21,103 @@
 ###################  Parameter processing  #####################
 ################################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
-## 参数名
+## Parameters
 TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,prior:,bin:,bin_sim:,tbv_col:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,min:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,debug,suffix,dense,noCov,append,overlap,evenly,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
-## 解析参数
+## Parse arguments
 while true; do
   case "$1" in
-    --proj )     proj="$2";     shift 2 ;; ## 项目目录 [必需]
-    --breeds )   breeds="$2";   shift 2 ;; ## 群体/品种标识符，如'YY DD' [必需]
-    --traits )   traits="$2";   shift 2 ;; ## 表型文件中所有性状名，如'AGE BF' [必需]
-    --type )     type="$2";     shift 2 ;; ## 分析类型，bin/adj/gsim/geno/psim/within/blend/union/multi/accur/var [必需]
-    --trait )    trait="$2";    shift 2 ;; ## 需要进行分析的性状名，如'AGE' [traits]
-    --bfile )    bfile="$2";    shift 2 ;; ## plink文件前缀，如"/public/home/merge" [NULL]
-    --phef )     phef="$2";     shift 2 ;; ## 表型文件 [NULL]
-    --pedf )     phef="$2";     shift 2 ;; ## 系谱文件 [NULL]
-    --rg_dist )  rg_dist="$2";  shift 2 ;; ## 加性遗传相关大小服从的分布，uniform/normal/identical [identical]
-    --rg_sim )   rg_sim="$2";   shift 2 ;; ## 性状模拟时群体间的加性遗传相关大小 [0.2]
-    --rg_pri )   rg_pri="$2";   shift 2 ;; ## 多性状模型中群体间的加性遗传相关大小先验 [NULL]
-    --h2s )      h2s="$2";      shift 2 ;; ## 性状模拟时各品种性状的遗传力大小 [0.2]
-    --means )    means="$2";    shift 2 ;; ## 性状模拟时各品种群体均值 [NULL]
-    --iter )     iter="$2";     shift 2 ;; ## MCMC 总循环次数 [30000]
-    --burnin )   burnin="$2";   shift 2 ;; ## MCMC burn-in循环数 [20000]
-    --ref )      ref="$2";      shift 2 ;; ## 用于区间划分的SNP面板，M/1/2/... [M]
-    --dirPre )   dirPre="$2";   shift 2 ;; ## multi情形中在文件夹增加的前缀，如pre_multi_A_B [NULL]
-    --method)    method="$2";   shift 2 ;; ## 育种值估计方法，可为BLUP/GBLUP/ssGBLUP/BayesABLD [GBLUP]
-    --nsnp_cor ) nsnp_cor="$2"; shift 2 ;; ## 当设定指定数目区间内品种间存在遗传相关时，区间内的QTL数目 [10]
-    --nbin_cor ) nbin_cor="$2"; shift 2 ;; ## 设定指定数目区间内品种间存在遗传相关 [10]
-    --nsnp_sim ) nsnp_sim="$2"; shift 2 ;; ## 性状模拟时，以固定数目进行区间划分时，每个区间内所含的标记数 [60]
-    --bin_sim )  bin_sim="$2";  shift 2 ;; ## 性状模拟时区间划分方法，binf路径/win/chr [win]
-    --nsnp_win ) nsnp_win="$2"; shift 2 ;; ## 多品种评估以固定数目进行区间划分时，每个区间内所含的标记数 [100]
-    --nqtl )     nqtl="$2";     shift 2 ;; ## 性状模拟时的QTL数目 [300]
-    --nbin )     nbin="$2";     shift 2 ;; ## 多品种评估以固定数目SNP为区间划分依据时，尽可能接近这个设置的区间数 [NULL]
-    --min )      min="$2";      shift 2 ;; ## 保证挑选QTL的区间中SNP标记数的最小值 [NULL]
-    --tbv_col )  tbv_col="$2";  shift 2 ;; ## 不进行校正表型计算，真实育种值在表型文件中tbv_col列 [NULL]
-    --bin )      bin="$2";      shift 2 ;; ## 多品种评估时区间划分方法，fix/frq/ld/lava/cubic [fix]
-    --prior )    prior="$2";    shift 2 ;; ## 多品种评估时方差组分先验文件 [NULL]
-    --all_eff )  all_eff="$2";  shift 2 ;; ## 固定效应和随机效应所在列，如"2 1" ["2 1"]
-    --ran_eff )  ran_eff="$2";  shift 2 ;; ## 随机效应所在列，如"1" [1]
-    --binf )     binf="$2";     shift 2 ;; ## 区间划分文件 [NULL]
-    --rep)       rep="$2";      shift 2 ;; ## 交叉验证重复数 [1]
-    --fold)      fold="$2";     shift 2 ;; ## 交叉验证折数 [NULL]
-    --gen)       gen="$2";      shift 2 ;; ## 有表型个体中倒数gen个世代个体为验证群 [ALL]
-    --seed )     seed="$2";     shift 2 ;; ## MCMC抽样及验证群划分时的随机种子 [40296]
-    --code )     code="$2";     shift 2 ;; ## 脚本文件所在目录，如/BIGDATA2/cau_jfliu_2/liwn/code [NULL]
-    --thread )   thread="$2";   shift 2 ;; ## 线程数 [NULL]
-    --sim_dir )      sim_dir="$2";      shift 2 ;; ## 模拟结果文件输出文件夹名，注意该文件夹不能已存在 [rep1]
-    --nginds )       nginds="$2";       shift 2 ;; ## 各品种在输出基因型的群体中选择的基因型个体数 ["600 ..."]
-    --seg_gens )     seg_gens="$2";     shift 2 ;; ## 各品种从历史群体中分离后，分离的世代数 ["40 10"]
-    --extentLDs )    extentLDs="$2";    shift 2 ;; ## 各品种最后稳定LD经历的世代数 ["10 10"]
-    --last_males )   last_males="$2";   shift 2 ;; ## 各品种最后一个阶段的群体中的雄性个体数 ["100 10"]
-    --last_females ) last_females="$2"; shift 2 ;; ## 各品种最后一个阶段的群体中的雌性个体数 ["500 50"]
-    --founder_sel )  founder_sel="$2";  shift 2 ;; ## 各品种从历史群体中选择个体的依据 ["tbv /h,tbv /l"]
-    --seg_sel )      seg_sel="$2";      shift 2 ;; ## 各品种在世代选择阶段的个体选留依据 ["phen /h,phen /l"]
-    --last_sel )     last_sel="$2";     shift 2 ;; ## 各品种在LD稳定阶段的个体选留依据 ["rnd,rnd"]
-    --last_litters ) last_litters="$2"; shift 2 ;; ## 各品种在LD稳定阶段的每窝个体数 ["10 10"]
-    --geno_gen )     geno_gen="$2";     shift 2 ;; ## 输出基因型个体的世代 [8-10]
-    --nchr )         nchr="$2";         shift 2 ;; ## 染色体数目 [30]
-    --nmloc )        nmloc="$2";        shift 2 ;; ## 每条染色体上的标记数 [300000]
-    --nqloci )       nqloci="$2";       shift 2 ;; ## 每条染色体上的QTL数 [100]
-    --QMSim_h2 )     QMSim_h2="$2";     shift 2 ;; ## 性状的广义遗传力大小 [0.3]
-    --maf )          maf="$2";          shift 2 ;; ## 品种内模拟基因型标记选择标准 [0.01]
-    --binDiv )       binDiv="$2";       shift 2 ;; ## 抽样SNP时区间划分的依据，pos/frq [pos]
-    --binThr )       binThr="$2";       shift 2 ;; ## 抽样SNP时区间划分长度，物理位置cM或基因频率步长 [10]
-    --out )          out="$2";          shift 2 ;; ## 输出文件名 [依分析类型而定]
-    --nsnp )         nsnp="$2";         shift 2 ;; ## 模拟基因型中需要选择的标记个数 [50000]
-    --dense )        dense=true;        shift   ;; ## 用DMUAI模块时，应用稠密矩阵算法（多线程）即method为31
-    --rg_local )     rg_local=true;     shift   ;; ## 每个基因组分区的协方差不同，为局部ld、frq相关系数
-    --all_comb )     all_comb=true;     shift   ;; ## breeds中所有可能的品种组合都进行评估
-    --noCov )        noCov=true;        shift   ;; ## 性状间的残差效应约束为0
-    --overlap )      overlap=true;      shift   ;; ## SNP标记中包含QTL
-    --suffix )       suffix=true;       shift   ;; ## 在union/blend/multi等文件夹后添加品种名称后缀，如blend_YY_LL
-    --evenly )       evenly=true;       shift   ;; ## 在一个区间内挑选SNP作为存在遗传相关的QTL时，使SNP在区间中均匀分布
-    --append )       append=true;       shift   ;; ## 计算校正表型时，把各个群体的校正表型进行合并
-    --debug )        debug=true;        shift   ;; ## 不跑DMU、gmatrix、bayes等时间长的步骤
-  -h | --help)    grep ";; ##" $0 | grep -v help && exit 1 ;;
-  -- ) shift; break ;;
-  * ) shift; break ;;
+    --proj )     proj="$2";     shift 2 ;; ## Project directory [required]
+    --breeds )   breeds="$2";   shift 2 ;; ## Breed identifiers, e.g., 'YY DD' [required]
+    --traits )   traits="$2";   shift 2 ;; ## All trait names in phenotype file, e.g., 'AGE BF' [required]
+    --type )     type="$2";     shift 2 ;; ## Analysis type: bin/adj/gsim/geno/psim/within/single/multi/accur/var [required]
+    --trait )    trait="$2";    shift 2 ;; ## Trait name to be analyzed, e.g., 'AGE' [traits]
+    --bfile )    bfile="$2";    shift 2 ;; ## plink file prefix, e.g., "/public/home/merge" [NULL]
+    --phef )     phef="$2";     shift 2 ;; ## Phenotype file [NULL]
+    --pedf )     phef="$2";     shift 2 ;; ## Pedigree file [NULL]
+    --rg_dist )  rg_dist="$2";  shift 2 ;; ## Distribution of additive genetic correlation size, uniform/normal/identical [identical]
+    --rg_sim )   rg_sim="$2";   shift 2 ;; ## Additive genetic correlation size between breeds in trait simulation [0.2]
+    --rg_pri )   rg_pri="$2";   shift 2 ;; ## Prior for additive genetic correlation between breeds in multi-trait model [NULL]
+    --h2s )      h2s="$2";      shift 2 ;; ## Heritability size of traits for each breed in trait simulation [0.2]
+    --means )    means="$2";    shift 2 ;; ## Population means for each breed in trait simulation [NULL]
+    --iter )     iter="$2";     shift 2 ;; ## Total MCMC iterations [30000]
+    --burnin )   burnin="$2";   shift 2 ;; ## MCMC burn-in iterations [20000]
+    --ref )      ref="$2";      shift 2 ;; ## SNP panel used for interval partitioning, M/1/2/... [M]
+    --dirPre )   dirPre="$2";   shift 2 ;; ## Prefix added to folders in multi-scenario, e.g., pre_multi_A_B [NULL]
+    --method)    method="$2";   shift 2 ;; ## Breeding value estimation method: BLUP/GBLUP/ssGBLUP/mbBayesAB/bayesR [GBLUP]
+    --nsnp_cor ) nsnp_cor="$2"; shift 2 ;; ## Number of QTLs in the interval when genetic correlation exists between breeds [10]
+    --nbin_cor ) nbin_cor="$2"; shift 2 ;; ## Number of intervals when genetic correlation exists between breeds [10]
+    --nsnp_sim ) nsnp_sim="$2"; shift 2 ;; ## Number of markers per interval when partitioning by fixed number in trait simulation [60]
+    --bin_sim )  bin_sim="$2";  shift 2 ;; ## Interval partitioning method in trait simulation, binf path/win/chr [win]
+    --nsnp_win ) nsnp_win="$2"; shift 2 ;; ## Number of markers per interval when partitioning by fixed number for multi-breed prediction [100]
+    --nqtl )     nqtl="$2";     shift 2 ;; ## Number of QTLs in trait simulation [300]
+    --nbin )     nbin="$2";     shift 2 ;; ## Approximate number of intervals when partitioning by fixed SNP number for multi-breed prediction [NULL]
+    --min )      min="$2";      shift 2 ;; ## Minimum number of SNP markers in the interval for selecting QTLs [NULL]
+    --tbv_col )  tbv_col="$2";  shift 2 ;; ## Column for true breeding values in phenotype file without correction [NULL]
+    --bin )      bin="$2";      shift 2 ;; ## Interval partitioning method in multi-breed prediction, fix/frq/ld/lava/cubic [fix]
+    --prior )    prior="$2";    shift 2 ;; ## Prior file for variance components in multi-breed prediction [NULL]
+    --all_eff )  all_eff="$2";  shift 2 ;; ## Columns for fixed and random effects, e.g., "2 1" ["2 1"]
+    --ran_eff )  ran_eff="$2";  shift 2 ;; ## Column for random effects, e.g., "1" [1]
+    --binf )     binf="$2";     shift 2 ;; ## Interval partitioning file [NULL]
+    --rep)       rep="$2";      shift 2 ;; ## Number of cross-validation repeats [1]
+    --fold)      fold="$2";     shift 2 ;; ## Number of cross-validation folds [NULL]
+    --gen)       gen="$2";      shift 2 ;; ## Generation of individuals with phenotypes used as validation population [ALL]
+    --seed )     seed="$2";     shift 2 ;; ## Random seed for MCMC sampling and validation group partitioning [40296]
+    --code )     code="$2";     shift 2 ;; ## Directory of script files, e.g., /BIGDATA2/cau_jfliu_2/liwn/code [NULL]
+    --thread )   thread="$2";   shift 2 ;; ## Number of threads [NULL]
+    --sim_dir )      sim_dir="$2";      shift 2 ;; ## Name of output folder for simulation results (folder must not already exist) [rep1]
+    --nginds )       nginds="$2";       shift 2 ;; ## Number of individuals selected from each breed for output genotype population ["600 ..."]
+    --seg_gens )     seg_gens="$2";     shift 2 ;; ## Number of generations each breed has been segregated from the historical population ["40 10"]
+    --extentLDs )    extentLDs="$2";    shift 2 ;; ## Number of generations each breed has stabilized LD ["10 10"]
+    --last_males )   last_males="$2";   shift 2 ;; ## Number of male individuals in the final stage of the population for each breed ["100 10"]
+    --last_females ) last_females="$2"; shift 2 ;; ## Number of female individuals in the final stage of the population for each breed ["500 50"]
+    --founder_sel )  founder_sel="$2";  shift 2 ;; ## Criteria for selecting from the historical population for each breed ["tbv /h,tbv /l"]
+    --seg_sel )      seg_sel="$2";      shift 2 ;; ## Criteria for individual selection of each breed ["phen /h,phen /l"]
+    --last_sel )     last_sel="$2";     shift 2 ;; ## Criteria for individual selection during the LD stabilization for each breed ["rnd,rnd"]
+    --last_litters ) last_litters="$2"; shift 2 ;; ## Number of individuals per litter in the LD stabilization stage for each breed ["10 10"]
+    --geno_gen )     geno_gen="$2";     shift 2 ;; ## Generation of output genotype individuals [8-10]
+    --nchr )         nchr="$2";         shift 2 ;; ## Number of chromosomes [30]
+    --nmloc )        nmloc="$2";        shift 2 ;; ## Number of markers per chromosome [300000]
+    --nqloci )       nqloci="$2";       shift 2 ;; ## Number of QTLs per chromosome [100]
+    --QMSim_h2 )     QMSim_h2="$2";     shift 2 ;; ## Broad-sense heritability of traits [0.3]
+    --maf )          maf="$2";          shift 2 ;; ## Criteria for selecting simulated genotype markers within breed [0.01]
+    --binDiv )       binDiv="$2";       shift 2 ;; ## Basis for interval partitioning when sampling SNPs, pos/frq [pos]
+    --binThr )       binThr="$2";       shift 2 ;; ## Length of partition during SNP sampling, physical position (cM) or frequency step [10]
+    --out )          out="$2";          shift 2 ;; ## Output filename [depends on analysis type]
+    --nsnp )         nsnp="$2";         shift 2 ;; ## Number of markers to be selected in simulated genotype [50000]
+    --debug )        debug=true;        shift   ;; ## Not running GEBV calculation program, usually used as a debugging test
+    --dense )        dense=true;        shift   ;; ## Use dense matrix algorithm (multi-threaded) when using DMUAI module, i.e., method is 31
+    --rg_local )     rg_local=true;     shift   ;; ## Different covariance for each genomic partition, for local ld, frq correlation coefficient
+    --all_comb )     all_comb=true;     shift   ;; ## Evaluate all possible breed combinations in breeds
+    --noCov )        noCov=true;        shift   ;; ## Constrain residual effect between traits to 0
+    --overlap )      overlap=true;      shift   ;; ## QTL included in SNP markers
+    --suffix )       suffix=true;       shift   ;; ## Add breed name suffix to union/blend/multi folder names, e.g., blend_YY_LL
+    --evenly )       evenly=true;       shift   ;; ## Sample QTLs evenly across chromosomes
+    --) shift; break ;;
+    * ) echo "unknown option: $1"; exit 1 ;;
   esac
 done
 
-## 保存当前的工作路径
+
+## Save the current working directory
 workdir=$(pwd)
 
-## 检查必要参数是否提供
+## Check if the required parameters are provided
 if [[ ! -d ${proj} ]]; then
   echo "path ${proj} not found! "
   exit 1
-# elif [[ ! ${breeds} ]]; then
-#   echo "parameter --breeds is reduired! "
-#   exit 1
 fi
 
-## 日志文件夹
+## Log folder
 logp=${proj}/log
 mkdir -p ${logp}
 
-## 避免执行R脚本时的警告("ignoring environment value of R_HOME")
+## Avoid warnings when running R scripts ("ignoring environment value of R_HOME")
 unset R_HOME
 
-## 脚本所在文件夹
+## Folder containing the scripts
 if [[ ${code} ]]; then
   [[ ! -d ${code} ]] && echo "${code} not exists! " && exit 5
 else
@@ -129,9 +125,8 @@ else
   code=$(dirname "$script_path")
 fi
 
-## 脚本
+## Scripts
 pheno_sim=${code}/R/pheno_simulation.R
-# combination=${code}/R/array_combination.R
 phe_adj=${code}/shell/dmu_get_pheno_adj.sh
 GP_single=${code}/shell/GP_single_breed.sh
 GP_multi=${code}/shell/GP_multi_breed.sh
@@ -142,20 +137,20 @@ varComp_summ=${code}/shell/varcomp_summary.sh
 block_define=${code}/shell/lava_cubic_bolck.sh
 func=${code}/shell/function.sh
 
-## 将程序路径加到环境变量中
+## Add program path to the environment variable
 export PATH=${code}/bin:$PATH
 
-## 加载自定义函数
+## Load custom functions
 [[ ! -s ${func} ]] && echo "Error: ${func} not found! " && exit 5
 source ${func}
 
-## 检查需要的程序是否在环境变量中能检索到并且可执行
+## Check if required programs are in the environment path and executable
 check_command plink gmatrix mbBayesABLD LD_mean_r2 run_dmu4 run_dmuai
 
-## 检查需要的脚本文件是否存在且具有执行权限
+## Check if required script files exist and are executable
 check_command $pheno_sim $GP_single $GP_multi $block_define $phe_adj
 
-## 默认参数
+## Default parameters
 method=${method:="GBLUP"}
 all_eff=${all_eff:="2 1"}
 ran_eff=${ran_eff:="1"}
@@ -190,9 +185,9 @@ binThr=${binThr:="10"}
 min=${min:="${nsnp_cor}"}
 maf=${maf:=-0.01}
 
-## 不同类型分析下的默认参数
+## Default parameters for different types of analysis
 if [[ ${type} == "var" || ${type} == "accur" ]]; then
-  ## 默认参数
+  ## Default parameters
   rg_sim=${rg_sim:=/}
   rg_dist=${rg_dist:=/}
   rep=${rep:=/}
@@ -201,15 +196,14 @@ elif [[ ${type} == "psim" ]]; then
   rg_sim=${rg_sim:="0.2"}
   rg_dist=${rg_dist:=identical}
 elif [[ ${type} == "within" ]]; then
-  if [[ ${method} == "GBLUP" ]]; then
-    out=${out:="accur_GBLUP.txt"}
-  else
-    out=${out:="accur_BayesABLD.txt"}
+  if [[ ! "ssGBLUP|bayesR|mbBayesAB|" =~ ${method} ]]; then
+    echo "method can only be BLUP/GBLUP/ssGBLUP/mbBayesAB/bayesR."
+    exit 2
   fi
+  out=${out:="accur_${method}.txt"}
 fi
 
-
-## 从参数获取信息
+## Extract information from parameters
 read -ra breeds_array <<<"$breeds"
 read -ra traits_array <<<"$traits"
 read -ra trait_array <<<"$trait"
@@ -231,8 +225,8 @@ ntrait=${#trait_array[@]}
 [[ ${rg} ]] && rg=" --rg ${rg} "
 [[ ${dirPre} ]] && dirPre=" --prefix ${dirPre} "
 [[ ${prior} ]] && prior=" --priorVar ${prior} "
-# [[ ${bin} ]] && bin=" --bin ${bin} "
-## 由品种数确定的默认参数
+
+## Default parameters determined by the number of breeds
 nginds=${nginds:=$(printf "%${nbreed}s" | sed "s/ /600 /g" | sed 's/ *$//')}
 last_litters=${last_litters:=$(printf "%${nbreed}s" | sed "s/ /10 /g" | sed 's/ *$//')}
 last_females=${last_females:=$(printf "%${nbreed}s" | sed "s/ /200 /g" | sed 's/ *$//')}
@@ -243,28 +237,28 @@ extentLDs=${extentLDs:=$(printf "%${nbreed}s" | sed "s/ /10 /g" | sed 's/ *$//')
 last_males=${last_males:=$(printf "%${nbreed}s" | sed "s/ /40 /g" | sed 's/ *$//')}
 seg_gens=${seg_gens:=$(printf "%${nbreed}s" | sed "s/ /40 /g" | sed 's/ *$//')}
 
-## 模拟表型时，性状数为1，无性状名
+## When simulating phenotypes, set the number of traits to 1 if there are no trait names
 if [[ ${ntrait} == "0" ]]; then
   ntrait=1
   trait_array=('/')
   traits=/
 fi
 
-## 修改作业名
+## Modify the job name
 if [[ ${SLURM_CPUS_ON_NODE} ]]; then
   thread=${thread:=${SLURM_CPUS_ON_NODE}}
 
-  ## 修改作业名
+  ## Modify the job name
   scontrol update jobid=${SLURM_JOB_ID} name="${type}"
 fi
 
-## 并行作业数
+## Number of parallel jobs
 [[ ! ${thread} && ${rep} && ${fold} ]] && thread=$((rep * fold))
 
-## 修改工作文件夹
+## Change working directory
 cd ${proj} || exit 5
 
-## 从合并群中提取各个品种基因型信息(需要map/ped文件用于生成模拟表型)
+## Extract breed genotype information from merged group (requires map/ped files to generate simulated phenotypes)
 if [[ ${bfile} ]]; then
   check_plink "${bfile}" ${nchr}
   unset bfiles
@@ -277,15 +271,11 @@ if [[ ${bfile} ]]; then
   [[ -s fid.txt ]] && rm fid.txt
 fi
 
-## 文件夹
-# mkdir -p ${proj}
-# cd ${proj} || exit
-
-## 日志文件
+## Log file
 logf=${logp}/${type}_${SLURM_JOB_ID}.log
 
 if [[ ${type} == "bin" ]]; then
-  ## 区间划分
+  ## Interval division
   $block_define \
     --bfile ${bfile} \
     --win ${nsnp_win} \
@@ -293,49 +283,49 @@ if [[ ${type} == "bin" ]]; then
     --minSize ${nsnp_sim} \
     --type ${bin} \
     --out ${out} >${logp}/${bin}_block_${SLURM_JOB_ID}.log
-    [[ ! -s ${out} ]] && echo "error in bin defination! " && exit 1
+    [[ ! -s ${out} ]] && echo "error in bin definition! " && exit 1
 elif [[ ${type} == "adj" ]]; then
-  ## 计算校正表型（ebv+re）
-  for ti in "${trait_array[@]}"; do # ti=MS;pi=1
-    ## 获取要评估性状在所有性状中的位置索引
+  ## Calculate adjusted phenotypes (ebv+re)
+  for ti in "${trait_array[@]}"; do
+    ## Get the index of the trait to be evaluated among all traits
     pi=$(echo "${traits}" | tr ' ' '\n' | grep -n -w -m1 "${ti}" | cut -d':' -f1)
     phedir=${proj}/${ti}
 
-    ## 修改作业名
+    ## Modify job name
     [[ ${SLURM_CPUS_ON_NODE} ]] && scontrol update jobid=${SLURM_JOB_ID} name="${type}_${ti}"
 
-    ## 分析指定表型的文件夹
+    ## Folder for analyzing the specified phenotype
     mkdir -p ${phedir}
     cd "${phedir}" || exit
 
     [[ -s ${phedir}/phe_adj_BLUP.txt ]] && \
-      echo "Warning: phe_adj_BLUP.txt existe! "
+      echo "Warning: phe_adj_BLUP.txt exists! "
 
     for b in "${breeds_array[@]}"; do
-      ## 分析指定表型中指定品种的文件夹
+      ## Folder for analyzing the specified breed's phenotype
       mkdir -p ${phedir}/${b}
       cd ${phedir}/${b} || exit
 
       if [[ ! -s ${b}_dmu.txt ]]; then
-        ## 检查基因型文件是否存在及是否为二进制文件
+        ## Check if the genotype file exists and is in binary format
         check_plink "${bfile}" ${nchr}
 
-        ## 检查plink文件中有无该品种标识的家系id
+        ## Check if the family id of the breed is present in the plink file
         if [[ $(grep -c "${b}" ${bfile}.fam) -eq 0 ]]; then
           echo "no family id ${b} in ${bfile}.fam file! "
           exit 1
         fi
 
-        ## 提取指定品种基因型(可能需要对基因型文件进行修改，所以也是复制基因型)
+        ## Extract the specified breed's genotype (might need to modify the genotype file, so it's also a copy of the genotype)
         echo ${b} >tmp_fid.txt
         plink --bfile ${bfile} --keep-fam tmp_fid.txt --chr-set ${nchr} --make-bed --out ${b} &>>${logf}
         rm tmp_fid.txt
 
-        ## 品种相应表型文件
+        ## Breed's corresponding phenotype file
         awk 'FNR==NR{a[$2];next} $1 in a' ${b}.fam ${phef} >${b}_dmu.txt
-        # grep ${b} ${phef} | awk '{$NF="";print}' > ${b}_dmu.txt # 表型文件中最后一列为品种
+        # grep ${b} ${phef} | awk '{$NF="";print}' > ${b}_dmu.txt # Last column of phenotype file is the breed
 
-        ## 计算校正表型
+        ## Calculate adjusted phenotypes
         $phe_adj \
           --phereal ${pi} \
           --bfile ${b} \
@@ -350,7 +340,7 @@ elif [[ ${type} == "adj" ]]; then
   done
 elif [[ ${type} == "gsim" ]]; then
   for dir in "${sim_dirs[@]}"; do
-    ## 修改作业名
+    ## Modify job name
     [[ ${SLURM_CPUS_ON_NODE} ]] && scontrol update jobid=${SLURM_JOB_ID} name="${type}_${dir}"
 
     $run_QMSim \
@@ -384,7 +374,7 @@ elif [[ ${type} == "geno" ]]; then
     --maf ${maf} \
     --nsnp ${nsnp}
 elif [[ ${type} == "psim" ]]; then
-  ## 模拟表型
+  ## Simulate phenotypes
   if [[ ! -s pheno_sim.txt ]]; then
     $pheno_sim \
       --h2 "${h2s}" \
@@ -407,7 +397,7 @@ elif [[ ${type} == "psim" ]]; then
       --out pheno_sim.txt &>>${logf}
     [[ ! -s pheno_sim.txt ]] && echo "phenotypes simulation error! " && exit 1
 
-    ## 去除qtl
+    ## Remove QTL
     if [[ ! ${overlap} ]]; then
       awk '{print $2}' qtl_info.txt >qtl_snpid.txt
     else 
@@ -415,13 +405,13 @@ elif [[ ${type} == "psim" ]]; then
     fi
   fi
 elif [[ ${type} == "within" ]]; then
-  ## 群体内评估
-  for ti in "${trait_array[@]}"; do # ti=/;pi=1
-    ## 获取要评估性状在所有性状中的位置索引
+  ## Within-population prediction
+  for ti in "${trait_array[@]}"; do
+    ## Get the index of the trait to be evaluated among all traits
     pi=$(echo "${traits}" | tr ' ' '\n' | grep -n -w -m1 "${ti}" | cut -d':' -f1)
     phedir=${proj}/${ti}
 
-    ## 真实育种值所在文件
+    ## File containing true breeding values
     if [[ -s ${phedir}/phe_adj_BLUP.txt ]]; then
       tbvf=${phedir}/phe_adj_BLUP.txt
     else
@@ -429,16 +419,16 @@ elif [[ ${type} == "within" ]]; then
     fi
 
     for b in "${breeds_array[@]}"; do
-      ## 修改作业名
+      ## Modify job name
       [[ ${SLURM_CPUS_ON_NODE} ]] && scontrol update jobid=${SLURM_JOB_ID} name="${type}_${ti}_${b}"
 
-      ## 工作文件夹
+      ## Working folder
       mkdir -p ${phedir}/${b}
       cd ${phedir}/${b} || exit 5
 
-      ## 基因型文件
+      ## Genotype file
       if [[ -s ${phedir}/qtl_snpid.txt ]]; then
-        ## 在基因型文件中去除qtl
+        ## Remove QTL from genotype file
         plink \
           --file ${phedir}/${b}m \
           --exclude ${phedir}/qtl_snpid.txt \
@@ -449,13 +439,13 @@ elif [[ ${type} == "within" ]]; then
         bfile=${proj}/${b}m
       fi
 
-      ## 表型文件
+      ## Phenotype file
       if [[ -s ${phedir}/pheno_sim.txt ]]; then
         grep "${b}" ../pheno_sim.txt | awk '{print $2="", $0}' | awk '$2="1"' >${b}_dmu_pheno.txt
         phef=${b}_dmu_pheno.txt
       fi
 
-      ## dmu计算准确性
+      ## Accuracy of DMU calculation
       $GP_single \
         --label ${b} \
         --phef ${phef} \
@@ -469,6 +459,8 @@ elif [[ ${type} == "within" ]]; then
         --phereal ${pi} \
         --thread ${thread} \
         --tbvf ${tbvf} \
+        --iter ${iter} \
+        --burnin ${burnin} \
         ${pedf} \
         ${dense} \
         ${debug} \
@@ -478,36 +470,36 @@ elif [[ ${type} == "within" ]]; then
         --out ${out} &>>${logf}
     done
   done
-elif [[ ${type} == "blend" || ${type} == "union" || ${type} == "multi" ]]; then
-  for ti in "${trait_array[@]}"; do # ti=${trait_array[0]}
-    ## 获取要评估性状在所有性状中的位置索引
+elif [[ ${type} == "single" || ${type} == "multi" ]]; then
+  for ti in "${trait_array[@]}"; do
+    ## Get the index of the trait to be evaluated among all traits
     pi=$(echo "${traits}" | tr ' ' '\n' | grep -n -w -m1 "${ti}" | cut -d':' -f1)
     phedir=${proj}/${ti}
 
-    ## 切换到工作文件夹
+    ## Switch to working folder
     cd ${phedir} || exit 5
 
-    ## 修改作业名
+    ## Modify job name
     # mtype=$(basename "$(dirname "$phedir")")_$(basename "$phedir" | tr '/' '_')
     if [[ ${SLURM_CPUS_ON_NODE} ]]; then
-      if [[ ${type} == "multi" ]]; then
-        name="${type}_${ti}_${bin}"
+      if [[ ${method} == "mbBayesAB" ]]; then
+        name="${type}_${method}_${ti}_${bin}"
       else
-        name="${type}_${ti}"
+        name="${type}_${method}_${ti}"
       fi
       scontrol update jobid=${SLURM_JOB_ID} name="${name}"
     fi
 
-    ## 真实育种值所在文件
+    ## File containing true breeding values
     if [[ -s ${phedir}/phe_adj_BLUP.txt ]]; then
-      ## 校正表型
+      ## Adjusted phenotypes
       tbvf=${phedir}/phe_adj_BLUP.txt
     else
-      ## 表型文件中含"真实"育种值
+      ## Phenotype file contains "true" breeding values
       tbvf=${phef}
     fi
 
-    ## 检查该品种组合中是否所有品种都完成品种内评估，否则跳过
+    ## Check if all breeds in the combination have completed within-breed prediction, otherwise skip
     for breed in $breeds; do
       [[ ! -d ${phedir}/${breed} ]] && echo "${phedir}/${breed} not found." && not_run=true && break
     done
@@ -516,6 +508,7 @@ elif [[ ${type} == "blend" || ${type} == "union" || ${type} == "multi" ]]; then
     $GP_multi \
       --pops "${breeds}" \
       --type ${type} \
+      --method ${method} \
       --tbvf ${tbvf} \
       --phereal ${pi} \
       --nsnp_win ${nsnp_win} \
@@ -525,6 +518,7 @@ elif [[ ${type} == "blend" || ${type} == "union" || ${type} == "multi" ]]; then
       --ref ${ref} \
       --seed ${seed} \
       --bin ${bin} \
+      --overwrite \
       ${prior} \
       ${dirPre} \
       ${rg_local} \
@@ -538,19 +532,17 @@ elif [[ ${type} == "blend" || ${type} == "union" || ${type} == "multi" ]]; then
       ${debug} &>>${logf}
   done
 elif [[ ${type} == "accur" ]]; then
-  ## 准确性统计
+  ## Accuracy statistics
   $accuracy_summ \
     --proj "${proj}" \
     --breeds "${breeds}" \
     --traits "${traits}" \
-    --bin "${bin}" \
-    --code "${code}" \
     --cor "${rg_sim}" \
     --rep "${rep}" \
     --dist "${rg_dist}" \
-    ${out}
+    ${out} &>>${logf}
 elif [[ ${type} == "var" ]]; then
-  ## 遗传参数统计
+  ## Genetic parameter statistics
   $varComp_summ \
     --proj "${proj}" \
     --breeds "${breeds}" \
@@ -560,20 +552,5 @@ elif [[ ${type} == "var" ]]; then
     --cor "${rg_sim}" \
     --rep "${rep}" \
     --dist "${rg_dist}" \
-    ${out}
+    ${out} &>>${logf}
 fi
-
-# ## 删除没有信息的日志文件
-# [[ $? -eq 0 ]] && [[ -s ${logf} ]] && rm ${logf}
-
-type=multi
-proj=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/identical/cor0.2
-breeds="A B"
-bfile=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/merge
-phef=/work/home/ljfgroup01/WORKSPACE/liwn/mbGS/QMSim/Two/rep1/identical/cor0.2/pheno_sim.txt
-thread=26
-code=/work/home/ljfgroup01/WORKSPACE/liwn/code/GitHub/GP-cross-validation
-seed=169852
-suffix=t
-tbv_col=6
-bin=lava

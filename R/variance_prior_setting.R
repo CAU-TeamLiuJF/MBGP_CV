@@ -1,19 +1,37 @@
 #!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 
-## liwn@cau.edu.cn 2023-07-05
-## 根据表型方差估计近似遗传和残差方差，用作初始值
 
-# 加载需要的程序包
+########################################################################################################################
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Merge the DMU phenotype files of multiple breeds for joint prediction
+##
+##
+## Usage: ./variance_prior_setting.R --filea "/path/to/file" ...(Please refer to --help for detailed parameters)
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
+
+## Load required packages (install them in advance if not already installed)
 suppressPackageStartupMessages(library("getopt"))
 suppressPackageStartupMessages(library("data.table"))
 suppressPackageStartupMessages(library("Matrix"))
 
-## 命令行参数
+## Get command-line parameters
 spec <- matrix(
   c("filea",    "p", 1, "character", "[Required] phenotype file 1",
+    "out",      "o", 1, "character", "[Required] output file name",
     "fileb",    "P", 1, "character", "[Optional] phenotype file 2",
     "pcol",     "c", 1, "double",    "[Optional] phenotype column in phenotype file [first real type column]",
-    "type",     "t", 1, "character", "[Optional] Format of the output variance file. blend/union/multi [union]",
+    "type",     "t", 1, "character", "[Optional] Format of the output variance file. single/multi [multi]",
+    "method",   "m", 1, "character", "[Optional] genomic prediction models. GBLUP/mbBayesAB [GBLUP]",
     "rep",      "r", 1, "integer",   "[Optional] repeat times [1]",
     "fold",     "f", 1, "integer",   "[Optional] cross validation fold [1]",
     "var",      "v", 1, "character", "[Optional] pheno/predict [pheno]",
@@ -24,26 +42,25 @@ spec <- matrix(
     "add_rf",   "d", 1, "integer",   "[Optional] additive effect random group in dmu [1]",
     "rg_local", "l", 1, "character", "[Optional] file contains correlations of each bins [1]",
     "miss",     "n", 1, "double",    "[Optional] missing value [-99]",
-    "out",      "o", 1, "character", "[Optional] output file name",
     "overwri",  "O", 2, "character", "[Optional] overwrie the existing result file",
     "norec",    "R", 0, "logical",   "[Optional] non-existing covariances between residuals",
     "help",     "h", 0, "logical",   "This is Help!"),
   byrow = TRUE, ncol = 5)
 opt <- getopt(spec = spec)
 
-if (!is.null(opt$help) || is.null(opt$filea)) {
+if (!is.null(opt$help) || is.null(opt$filea) || is.null(opt$out)) {
   cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
-## 默认参数
+## Default parameters
 if (is.null(opt$h2)) opt$h2 <- 0.5
 if (is.null(opt$h2B)) opt$h2B <- opt$h2
 if (is.null(opt$rg)) opt$rg <- 0.001
 if (is.null(opt$re)) opt$re <- 0.001
 if (is.null(opt$miss)) opt$miss <- -99
-# if (is.null(opt$out)) opt$out = "var_prior.txt"
-if (is.null(opt$type)) opt$type <- "union"
+if (is.null(opt$type)) opt$type <- "multi"
+if (is.null(opt$method)) opt$method <- "GBLUP"
 if (is.null(opt$add_rf)) opt$add_rf <- 1
 if (is.null(opt$var)) opt$var <- "pheno"
 if (is.null(opt$fileb)) {
@@ -54,29 +71,29 @@ if (is.null(opt$fileb)) {
 output <- FALSE
 for (r in 1:opt$rep) { # nolint
   for (f in 1:opt$fold) {
-    ## 更换路径中的占位符
+    ## Replace placeholders in the path
     filea <- gsub("#val#", f, gsub("#rep#", r, opt$filea))
     fileb <- gsub("#val#", f, gsub("#rep#", r, opt$fileb))
     out <- gsub("#val#", f, gsub("#rep#", r, opt$out))
 
-    ## 检查文件夹中是否已有表型文件
+    ## Check if there are any phenotype files in the folder
     if (file.exists(out) && opt$overwri != "true") next
 
     output <- TRUE
 
-    ## 检查文件是否存在
+    ## Check if the file exists
     if (!file.exists(filea) || !file.exists(fileb)) {
       cat("warn: file a or b not found, prior information of rep", r, "fold", f, "will not be generated!\n")
       next
     }
 
-    ## 读取文件
+    ## Read the files
     data1 <- fread(filea)
     data2 <- fread(fileb)
 
-    ## 获取方差组分
+    ## Obtain variance components
     if (opt$var == "pheno") {
-      ## 命名
+      ## rename
       if (is.null(opt$pcol)) {
         int_index <- apply(data1, 2, function(x) all(floor(x) == x))
         opt$pcol <- which(!int_index)[1]
@@ -84,13 +101,16 @@ for (r in 1:opt$rep) { # nolint
         stop("pcol (", opt$pcol, ") cannot be bigger than file columns (", ncol(data1), ")")
       }
       names(data1)[opt$pcol] <- names(data2)[opt$pcol] <- "phe"
-      ## 缺失值处理
+
+      ## Missing value handling
       data1$phe[data1$phe == opt$miss] <- NA
       data2$phe[data2$phe == opt$miss] <- NA
-      ## 计算表型方差
+
+      ## Calculate phenotype variance
       pvar1 <- var(data1$phe, na.rm = TRUE)
       pvar2 <- var(data2$phe, na.rm = TRUE)
-      ## 获取方差组分
+
+      ## Obtain variance components
       vara1 <- pvar1 * opt$h2
       vara2 <- pvar2 * opt$h2B
       vare1 <- pvar1 * (1 - opt$h2)
@@ -98,19 +118,20 @@ for (r in 1:opt$rep) { # nolint
     } else if (opt$var == "predict") {
       if (opt$add_rf >= max(data1$V1)) stop("add_rf cannot be larger than the number of random groups in dmu!")
       if (any(data1$V2 != data2$V2)) stop("The random effects groups are different in the two files!")
-      ## 获取方差组分
+
+      ## Obtain variance components
       vara1 <- data1$V4[opt$add_rf]
       vara2 <- data2$V4[opt$add_rf]
       vare1 <- tail(data1$V4, 1)
       vare2 <- tail(data2$V4, 1)
     }
 
-    ## 计算协方差
+    ## Calculate covariance
     cova <- opt$rg * sqrt(vara1) * sqrt(vara2)
     cove <- opt$re * sqrt(vare1) * sqrt(vare2)
 
-    ## 保证协方差矩阵正定性
-    ## 遗传方差
+    ## Ensure the positive definiteness of the covariance matrix
+    ## Genetic variance
     vara <- matrix(c(vara1, cova, cova, vara2), 2, 2)
     vara_pd <- nearPD(vara, keepDiag = TRUE) # default
     if (!vara_pd$converged) {
@@ -119,7 +140,7 @@ for (r in 1:opt$rep) { # nolint
       cat("add a small value to genetic effect covariance matrix\n")
       cova <- vara_pd$mat[2, 2]
     }
-    ## 残差方差
+    ## Residual variance
     vare <- Matrix(c(vare1, cova, cova, vare2), 2, 2)
     vare_pd <- nearPD(vare, keepDiag = TRUE) # default
     if (!vare_pd$converged) {
@@ -129,41 +150,44 @@ for (r in 1:opt$rep) { # nolint
       cova <- vare_pd$mat[2, 2]
     }
 
-    ## 方差组分形式
-    if (opt$type == "union") {
+    ## Variance component form
+    if ((opt$type == "multi") && (opt$method == "GBLUP")) {
       prior <- data.frame(
         group = c(1, 1, 1, 2, 2, 2),
         rindx = c(1, 2, 2, 1, 2, 2),
         cindx = c(1, 1, 2, 1, 1, 2),
         var = c(vara1, cova, vara2, vare1, cove, vare2)
       )
-      ## 约束残差协方差
+      ## Constrained residual covariance
       if (!is.null(opt$norec)) {
         prior <- prior[-5, ]
       }
-    } else if (opt$type == "multi") {
+    } else if (opt$method == "mbBayesAB") {
       if (!is.null(opt$rg_local)) {
-        ## 检查文件是否存在
+        ## Check if the file exists
         if (!file.exists(opt$rg_local)) {
           cat(opt$rg_local, "not found!\n")
           quit(status = 1)
         }
 
-        ## 获取相关系数
+        ## Obtain correlation coefficient
         rg_local <- fread(opt$rg_local)
         names(rg_local)[ncol(rg_local)] <- "cor"
         names(rg_local)[3] <- "nsnp"
         nsnp_total <- sum(rg_local$nsnp)
-        ## 计算每个区间的方差组分
+
+        ## Calculate the variance components of each block
         prior <- data.frame(
           var1 = vara1 * rg_local$nsnp / nsnp_total,
           var2 = vara2 * rg_local$nsnp / nsnp_total
         )
         prior$cov1 <- prior$cov2 <- rg_local$cor * sqrt(prior$var1) * sqrt(prior$var2)
         prior <- prior[, c("var1", "cov1", "cov2", "var2")]
-        ## 加上残差方差组分
+
+        ## Add residual variance component
         prior[nrow(prior) + 1, ] <- c(vare1, cove, cove, vare2)
-        ## 保证矩阵的正定性
+
+        ## Ensure the positive definiteness of the matrix
         for (i in seq_len(nrow(prior))) {
           vari <- matrix(unlist(prior[i, ]), 2, 2)
           vari_pd <- nearPD(vari, keepDiag = TRUE) # default
@@ -180,7 +204,7 @@ for (r in 1:opt$rep) { # nolint
           vare1, cove, cove, vare2
         ), 2, 4, byrow = TRUE))
       }
-    } else if (opt$type == "blend") {
+    } else if ((opt$type == "single") && (opt$method == "GBLUP")) {
       if (opt$var == "predict") {
         prior <- data1
         prior$V4 <- (prior$V4 + data2$V4) / 2
@@ -197,7 +221,7 @@ for (r in 1:opt$rep) { # nolint
     }
 
     if (!is.null(opt$out)) {
-      ## 输出文件
+      ## Output the result
       write.table(prior, out, row.names = FALSE, col.names = FALSE, quote = FALSE)
       # cat("prior file output to:", out, "\n")
     } else {

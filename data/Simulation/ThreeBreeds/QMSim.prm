@@ -1,7 +1,7 @@
 /*******************************
  **     Global parameters     **
  *******************************/
-title = "Simulations 4 populations";
+title = "Simulations 3 breeds";
 seed = "%seed_file%";
 nthread = %nthread%;
 nrep  = 1;                    //Number of replicates
@@ -22,9 +22,9 @@ begin_hp;
 	nmfhg = 50;
 end_hp;
 
-/*******************************
- **   Populations A      **
- *******************************/
+/********************
+ **   Breed A      **
+ ********************/
 
 begin_pop = "A1";
    begin_founder;
@@ -83,9 +83,9 @@ begin_pop = "A";
    end_popoutput;
 end_pop;
 
-/*******************************
- **   Populations B      **
- *******************************/
+/********************
+ **   Breed B      **
+ ********************/
 
 begin_pop = "B1";
    begin_founder;
@@ -144,9 +144,9 @@ begin_pop = "B";
    end_popoutput;
 end_pop;
 
-/*******************************
- **   Populations C      **
- *******************************/
+/********************
+ **   Breed C      **
+ ********************/
 
 begin_pop = "C1";
    begin_founder;
@@ -231,7 +231,7 @@ end_genome;
  **       Output options      **
  *******************************/
 begin_output;
-	output_folder = "rep1";
+	output_folder = "%output_folder%";
 	linkage_map;
 	hp_stat;
 end_output;

@@ -1,12 +1,23 @@
 #!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
-# 李伟宁 2021-12-08
-## 计算多群体关系矩阵 ###
-## 输入两个群体合并基因型文件(plink的012格式，*.raw) ###
-## 输出不同方法计算的多群体关系矩阵[(ida+idb) x (ida+idb)] ###
-## 输出格式为三列，id1 id2 value，tab分隔符
-## 使用前需要安装相应的包，以及调用c++时需要的组件
-## debug
-# opt = list(rawf='popA_popB.raw', idaf='popA.ids', idbf='popB.ids')
+
+########################################################################################################################
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Calculate the multi-breed relationship matrix
+##
+##
+## Usage: ./multibreed_relationship_matrix.R --rawf "/path/to/rawf" ...(Please refer to --help for detailed parameters)
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
+
 
 # Load packages
 cat("Loading packages needed...\n")
@@ -37,29 +48,29 @@ spec <- matrix(
 )
 opt <- getopt::getopt(spec = spec)
 
-## 检查必要参数
+## Check necessary parameters
 if (!is.null(opt$help) || is.null(opt$rawf) || is.null(opt$idaf) || is.null(opt$idbf)) {
   ## print help message
-  cat(paste(getopt::getopt(spec = spec, usage = TRUERUE), "\n"))
+  cat(paste(getopt::getopt(spec = spec, usage = TRUE), "\n"))
   quit(status = -1)
 }
 
-## 默认参数设置
+## Default parameter settings
 if (is.null(opt$header)) header <- FALSE else header <- TRUE
 if (is.null(opt$tol)) opt$tol <- 1e-6
 if (is.null(opt$out)) opt$out <- "Yvonne2017"
 if (is.null(opt$method)) opt$method <- "Yvonne"
 
-## 检查method参数
+## Check the method parameter
 if (!opt$method %in% c("Yvonne", "Chen", "Mean", "No")) {
   cat("Method can only have one of these options: Yvonne/No/Chen/Mean\n")
   quit(status = -1)
 }
 
-## 更换工作路径
+## Change the working directory
 if (!is.null(opt$workdir)) setwd(opt$workdir)
 
-## 准备加速矩阵乘法的c++脚本
+## Prepare C++ script for accelerated matrix multiplication
 cpp <- "// [[Rcpp::depends(RcppArmadillo, RcppEigen)]]"
 cpp <- c(cpp, "#include <RcppArmadillo.h>")
 cpp <- c(cpp, "#include <RcppEigen.h>")
@@ -78,33 +89,33 @@ write.table(cpp, "Matrix_multiplication.cpp",
   row.names = FALSE, quote = FALSE
 )
 
-## 加载c++函数
+## Load C++ functions
 cat("Loading C++ functions...\n")
 sourceCpp("Matrix_multiplication.cpp")
 
-## 读取基因型文件
+## Load genotype file
 cat("Loading genotype...\n")
 raw <- fread(opt$rawf)
 
-## 获取不同群体id
+## Get IDs of different groups
 ida <- read.table(opt$idaf)
 idb <- read.table(opt$idbf)
 
-## 群体个体数
+## Number of individuals in each group
 num_a <- nrow(ida)
 num_b <- nrow(idb)
 num_all <- num_a + num_b
 
-## 不同群体基因含量矩阵
+## Genotype matrices for different groups
 geno_a <- as.matrix(raw[raw$IID %in% ida$V1, -c(1:6)])
 geno_b <- as.matrix(raw[raw$IID %in% idb$V1, -c(1:6)])
 
-## 标记数
+## Number of markers
 nsnp_a <- ncol(geno_a)
 nsnp_b <- ncol(geno_b)
 nsnp_all <- ncol(geno_a)
 
-## 基因频率
+## Gene frequency
 cat("Calculating gene frequency...\n")
 af_a <- apply(geno_a, 2, sum) / num_a / 2
 sum2pq_a <- sum(2 * af_a * (1 - af_a))
@@ -127,19 +138,19 @@ zb <- geno_b - pb
 pall <- matrix(2 * af_all, byrow = TRUE, nrow = num_all, ncol = nsnp_all)
 zall <- as.matrix(raw[, -c(1:6)]) - pall
 
-## 删除变量，释放内存
+## Delete variables to free memory
 rm(geno_a)
 rm(geno_b)
 rm(raw)
 gclog <- gc(verbose = FALSE)
 
-## 关系矩阵容器
+## Relationship matrix container
 gmat <- matrix(0, nrow = num_all, ncol = num_all)
 
-## 群体在Gmat中的位置索引
-ida_index <- c(rep(TRUE, num_a), rep(FaLSE, num_b))
+## Position indices of groups in Gmat
+ida_index <- c(rep(TRUE, num_a), rep(FALSE, num_b))
 
-## 基因组关系矩阵校正因子
+## Genomic relationship matrix correction factors
 scalea <- sum2pq_a
 scaleb <- sum2pq_b
 if (opt$method == "Yvonne") {
@@ -152,7 +163,7 @@ if (opt$method == "Yvonne") {
   scalea <- scaleb <- scaleab <- 1
 }
 
-## 生成G矩阵
+## Generate G matrix
 cat("Generating G matrix...\n")
 if (opt$method != "Mean") {
   gmat[ida_index, ida_index] <- eigenMapMatMult(za, t(za)) / scalea
@@ -163,7 +174,7 @@ if (opt$method != "Mean") {
   gmat[, ] <- eigenMapMatMult(zall, t(zall)) / sum2pq_all
 }
 
-## 保证矩阵正定
+## Ensure the matrix is positive definite
 make_positive_definite <- function(mat, tol = 1e-6) {
   eig <- eigen(mat, symmetric = TRUE)
   rtol <- tol * eig$values[1]
@@ -179,10 +190,10 @@ make_positive_definite <- function(mat, tol = 1e-6) {
   }
 }
 
-## 保证矩阵正定
+## Ensure the matrix is positive definite
 gmat_pd <- make_positive_definite(gmat, tol = opt$tol)
 
-## 是否输出逆矩阵
+## Whether to output the inverse matrix
 if (!is.null(opt$inv)) {
   cat("Inverting matrix...\n")
   opt$out <- paste0(opt$out, ".grm.inv")
@@ -192,14 +203,14 @@ if (!is.null(opt$inv)) {
   gmat_out <- gmat_pd
 }
 
-## 是否以id命名
+## Whether to use ID names
 if (is.null(opt$index)) {
-  ## 输出文件中1、2列为个体基因型文件中id
+  ## In the output file, the 1st and 2nd columns are IDs from the genotype file
   rownames(gmat_out) <- colnames(gmat_out) <- c(ida$V1, idb$V1)
 } else {
   if (!is.null(opt$phef)) {
-    ## 输出的基因型矩阵中1、2列为行/列号，对表型文件中id进行重编
-    phe <- fread(opt$phef) ## 默认第一列为id
+    ## The 1st and 2nd columns in the output genotype matrix are row/column numbers, re-indexing IDs in the phenotype file
+    phe <- fread(opt$phef) ## The default first column is ID
     names(phe)[1] <- "org"
     mtab <- data.frame(org = c(ida$V1, idb$V1), new = 1:num_all)
     pcol <- ncol(phe)
@@ -207,15 +218,15 @@ if (is.null(opt$index)) {
     phe <- subset(phe2, select = c(pcol + 1, 2:pcol, 1))
     fwrite(phe, paste0(basename(opt$phef), ".new"), col.names = FALSE, sep = " ")
     fwrite(mtab, "grm_id_match.txt", sep = " ")
-    cat("The ID in phenotype file has been replaced\n")
+    cat("The ID in the phenotype file has been replaced\n")
   }
 }
 
-## 将矩阵转换成三列形式(下三角)
+## Convert matrix to three-column format (lower triangular)
 gmat_out[upper.tri(gmat_out)] <- NA
 gmat3col <- melt(gmat_out, na.rm = TRUE)
 
-## 是否输出矩阵的log(determinant)
+## Whether to output log(determinant) of the matrix
 if (!is.null(opt$logdet)) {
   cat("Calculating determinant of matrix...\n")
   logdet <- determinant(gmat_pd)$modulus
@@ -228,7 +239,7 @@ if (!is.null(opt$logdet)) {
   }
 }
 
-## 写出矩阵
+## Write out the matrix
 cat("Writing out matrix...\n")
 fwrite(gmat3col, opt$out, sep = " ", col.names = header)
 

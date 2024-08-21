@@ -1,20 +1,28 @@
 #!/bin/bash
 
 ########################################################################################################################
-## 版本: 1.1.0
-## 作者: 李伟宁 liwn@cau.edu.cn
-## 日期: 2023-05-17
-## 简介: 用于保存自定义的函数
-## 
-## 使用: ./function.sh
-## 
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Save custom functions
+##
+##
+## Usage:
+## ./function.sh
+##
+##
 ## License:
 ##  This script is licensed under the GPL-3.0 License.
 ##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
 ########################################################################################################################
 
+
 check_alphabet() {
-  ## 检查文件中是否含有字符(DMU软件不接受字符类型的值)
+  ## Check if the file contains any alphabetic characters (DMU software does not accept character-type values)
   [[ ! -s ${1} ]] && echo "${1} not found! " && exit 1
   if [[ ${2} ]]; then
     NotNum=$(awk -vl=${2} '{print $l}' ${1} | grep -c "[a-zA-Z]")
@@ -23,17 +31,17 @@ check_alphabet() {
   fi
 
   if [[ ${NotNum} -gt 0 ]]; then
-    echo "Non numeric characters exist in ${1} file, please check! "
+    echo "Non-numeric characters exist in ${1} file, please check!"
     exit 1
   fi
 }
 
 check_command() {
-  # 检查脚本文件/软件是否存在并具有执行权限
-  # 参数：
-  # $@：需要检查的软件名称列表
+  # Check if the script file/software exists and has execution permission
+  # Parameters:
+  # $@：List of software names to check
   for cmd in "$@"; do
-    ## 判断是否为文件且具有可执行权限
+    ## Determine if it's a file and has execute permission
     if [[ -s ${cmd} ]]; then
       if [[ ! -x "$cmd" ]]; then
         echo "Error: \"$cmd\" does not have execute permission"
@@ -43,7 +51,7 @@ check_command() {
       fi
     fi
 
-    ## 判断是否为程序且具有可执行权限
+    ## Determine if it's a command and has execute permission
     if ! command -v "$cmd" &> /dev/null; then
       echo "Error: \"$cmd\" not found (not installed or not in PATH)"
       exit 1
@@ -55,22 +63,22 @@ check_command() {
 }
 
 check_plink() {
-  ## 检查指定前缀的plink二进制文件是否存在
-  ## 若存在map、ped则转化为二进制
-  ## 参数1：plink文件名前缀，如/path/to/plink_prefix
-  ## 参数2：染色体数目，默认为30
+  ## Check if the plink binary files with the specified prefix exist
+  ## If map and ped files exist, convert them to binary format
+  ## Parameter 1: plink file name prefix, e.g., /path/to/plink_prefix
+  ## Parameter 2: Number of chromosomes, default is 30
 
-  ## 检查plink软件是否可用
+  ## Check if plink software is available
   check_command plink
 
-  ## 染色体数设置
+  ## Set the number of chromosomes
   if [[ $2 ]]; then
     nchr=$2
   else
     nchr=30
   fi
 
-  ## 文件格式
+  ## File format
   for prefix in $1; do
     if [[ ! -f ${prefix}.fam ]]; then
       if [[ -f ${prefix}.map ]]; then
@@ -88,47 +96,47 @@ check_plink() {
 }
 
 merge_plink() {
-  ## 合并plink文件
-  ## 参数1：plink文件列表，以空格分隔，如"/path/to/plinkA_prefix /path/to/plinkB_prefix"，两侧需有双引号
-  ## 参数2：输出文件名前缀，如/path/to/plink_merge_prefix
-  ## 参数3：染色体数目，默认为30
-  ## 依赖：plink
+  ## Merge plink files
+  ## Parameter 1: List of plink files, separated by spaces, e.g., "/path/to/plinkA_prefix /path/to/plinkB_prefix", should be enclosed in double quotes
+  ## Parameter 2: Output file name prefix, e.g., /path/to/plink_merge_prefix
+  ## Parameter 3: Number of chromosomes, default is 30
+  ## Dependency: plink
 
-  ## 要合并的文件名列表
+  ## List of file names to merge
   local plink_list
   IF=" " read -r -a plink_list <<<"$1"
 
-  ## 染色体数设置
+  ## Set the number of chromosomes
   if [[ $3 ]]; then
     nchr=$3
   else
     nchr=30
   fi
 
-  ## 检查参数个数
+  ## Check the number of parameters
   nfiles=${#plink_list[@]}
   if [[ ${nfiles} -lt 2 ]]; then
     echo "Error: at least two plink files are needed to merge"
     return 1
   fi
 
-  ## 临时文件，用于存放需要合并的群体的文件名前缀
+  ## Temporary file to store the prefixes of the population files to be merged
   local seed_tmp=$RANDOM
   touch merge_${seed_tmp}.txt
 
-  ## 检查各群体的plink文件是否存在
+  ## Check if plink files for each population exist
   check_plink "${plink_list[0]}" ${nchr}
   for i in $(seq 1 $((nfiles - 1))); do
     check_plink "${plink_list[${i}]}" ${nchr}
     echo ${plink_list[${i}]} >>merge_${seed_tmp}.txt
   done
 
-  ## 检查输出文件前缀对应的plink文件是否已存在
+  ## Check if the plink files with the specified output prefix already exist
   if [[ -f $2.bed ]]; then
-    echo "warn: $2.bed already existed and will be overwrited! "
+    echo "Warning: $2.bed already exists and will be overwritten!"
   fi
 
-  ## 合并文件
+  ## Merge files
   [[ -s merge_${seed_tmp}.txt ]] && \
     plink \
       --bfile ${plink_list[0]} \

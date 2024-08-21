@@ -1,11 +1,28 @@
 #!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
-## 将输入的表型文件按照基因型文件个体顺序进行排序
-## opt <- list(fam='DD_num.fam', pheno='gwas_pca_DD.fam')
 
-# 加载需要的程序包
+########################################################################################################################
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Delete individuals with missing phenotypes
+##
+##
+## Usage: ./pheno_miss_remove.R --file "/path/to/file" ...(Please refer to --help for detailed parameters)
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
+
+
+## Load package required
 suppressPackageStartupMessages(library("getopt"))
 
-## 命令行参数
+## Command-line parameters
 spec <- matrix(
   c("file",     "I",  1, "character", "[Required] input file name",
     "col",      "C",  1, "integer",   "[Required] column to find missing value",
@@ -20,54 +37,55 @@ spec <- matrix(
   byrow = TRUE, ncol = 5)
 opt <- getopt(spec = spec)
 
-## 检查参数
+## Check parameters
 if (!is.null(opt$help) || is.null(opt$file) || is.null(opt$col)) {
-    cat(paste(getopt(spec = spec, usage = TRUERUE), "\n"))
-    quit()
+  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
+  quit()
 }
 
-## 默认参数
+## Default parameters
 if (is.null(opt$idC)) opt$idC <- 1
 if (is.null(opt$miss)) opt$miss <- -99
 if (is.null(opt$backName)) opt$backName <- paste0(opt$file, ".bc")
 if (is.null(opt$missid)) opt$missid <- "No_phe.id"
 
-## 读取文件
+## Read phenotype
 phe <- read.table(opt$file)
 
-## 命名
+## Rename
 if (opt$col > ncol(phe) || opt$idC > ncol(phe)) {
-    cat("parameter --col (", opt$col, ") or --idC (", opt$idC, ") bigger than phenotype file columns!\n")
-    quit()
+  cat("parameter --col (", opt$col, ") or --idC (", opt$idC, ") bigger than phenotype file columns!\n")
+  quit()
 } else {
-    names(phe)[opt$col] <- "value"
-    names(phe)[opt$idC] <- "id"
+  names(phe)[opt$col] <- "value"
+  names(phe)[opt$idC] <- "id"
 }
 
-
-## 查找缺失表型个体
+## Search for missing phenotypic individuals
 missid <- phe$id[phe$value <= opt$miss]
 if (length(missid) > 0) {
-    if (!is.null(opt$map)) {
-        ## 输出缺失表型的基因型个体
-        map <- read.table(opt$map)
-        fid_iid <- map[map$V2 %in% missid, 1:2]
-        write.table(fid_iid, opt$missid, row.names = FALSE, col.names = FALSE, quote = FALSE)
-    } else {
-        write.table(missid, opt$missid, row.names = FALSE, col.names = FALSE, quote = FALSE)
-    }
-    cat("individuals ID with the missing phenotype output to:", opt$missid, "\n")
+  if (!is.null(opt$map)) {
+    ## Output genotype individuals with missing phenotypes
+    map <- read.table(opt$map)
+    fid_iid <- map[map$V2 %in% missid, 1:2]
+    write.table(fid_iid, opt$missid, row.names = FALSE, col.names = FALSE, quote = FALSE)
+  } else {
+    write.table(missid, opt$missid, row.names = FALSE, col.names = FALSE, quote = FALSE)
+  }
+  cat("individuals ID with the missing phenotype output to:", opt$missid, "\n")
 
-    ## 在表型文件中删除缺失表型的个体
-    if (is.null(opt$NotRm)) {
-        phe_new <- phe[!phe$id %in% missid, ]
-        write.table(phe_new, opt$out, row.names = FALSE, col.names = FALSE, quote = FALSE)
-        # write.table(phe, opt$backName, row.names = FALSE, col.names = FALSE, quote = FALSE)
-        cat("phenotype (", nrow(phe_new), ") that no missing values in column", opt$col,
-            "has been output to", opt$out, "\n")
-        cat("remove", length(missid), "individuals with the missing value in input files\n")
-    }
+  ## Delete individuals with missing phenotypes in phenotype files
+  if (is.null(opt$NotRm)) {
+    phe_new <- phe[!phe$id %in% missid, ]
+    write.table(phe_new, opt$out, row.names = FALSE, col.names = FALSE, quote = FALSE)
+    # write.table(phe, opt$backName, row.names = FALSE, col.names = FALSE, quote = FALSE)
+    cat(
+      "phenotype (", nrow(phe_new), ") that no missing values in column", opt$col,
+      "has been output to", opt$out, "\n"
+    )
+    cat("remove", length(missid), "individuals with the missing value in input files\n")
+  }
 } else {
-    write.table(phe, opt$out, row.names = FALSE, col.names = FALSE, quote = FALSE)
-    cat("No individuals with the missing phenotype found, output file copy.\n")
+  write.table(phe, opt$out, row.names = FALSE, col.names = FALSE, quote = FALSE)
+  cat("No individuals with the missing phenotype found, output file copy.\n")
 }

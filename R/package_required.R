@@ -1,18 +1,34 @@
 #!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 
-## 检查需要的R包是否都已安装  ##
-## liwn 2023-09-07 ##
+########################################################################################################################
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Check if all the required R packages have been installed
+##
+##
+## Usage: ./package_required.R
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
 
-# 要检查的 R 包列表
+
+## List of R packages to be checked
 packages <- c("data.table", "LAVA", "getopt", "MASS", "RcppEigen", "Matrix", "ggplot2", "reshape2",
   "pedigree", "RcppArmadillo", "dplyr", "coda", "lattice", "stringr", "Cairo", "Rcpp", "reshape")
 
-# 检查并安装缺失的包
+## Check and install missing packages
 missing_packages <- packages[!packages %in% installed.packages()]
 if (length(missing_packages) > 0) {
-  message("以下R包未安装: ")
+  message("The following R packages are not installed: ")
   cat(missing_packages, sep = "\n")
-  message("请在R语言中运行以下命令安装: ")
+  message("Please run the following command in R language to install packages: ")
   command <- paste0("install.package(\"", paste(missing_packages, collapse = "\", \""), "\")")
   cat(command, "\n")
 }

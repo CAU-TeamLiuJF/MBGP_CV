@@ -1,13 +1,30 @@
 #!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
-## 返回输出文件中某两列的相关系数
 
-## 加载需要的程序包
-# cat('Loading required packages... \n\n')
+########################################################################################################################
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Returns the correlation coefficient between two columns in the input file
+##
+##
+## Usage: ./columns_correlation.R --file1 "/path/to/file1" ...(Please refer to --help for detailed parameters)
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
+
+
+## Load packages
 suppressPackageStartupMessages(library("getopt"))
 suppressPackageStartupMessages(library("data.table"))
 suppressPackageStartupMessages(library("dplyr"))
 
-## 命令行参数
+## Command-line parameters
 spec <- matrix(
   c("file1", "I", 1, "character", "[Required] input file",
     "file2", "i", 1, "character", "[Optional] input file",
@@ -19,37 +36,37 @@ spec <- matrix(
   byrow = TRUE, ncol = 5)
 opt <- getopt(spec = spec)
 
-## 检查参数
+## Check parameters
 if (!is.null(opt$help) || is.null(opt$file1)) {
   cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
-## 读取文件
+## Read file
 data1 <- fread(opt$file1)
 
 if (is.null(opt$file2)) {
-  ## 只有单个文件
+  ## Only input single file
   if (is.null(opt$col1)) opt$col1 <- 2
   if (is.null(opt$col2)) opt$col2 <- 2
 
   cors <- cor(data1[, opt$col1], data1[, opt$col2])
 } else {
-  ## 文件2
+  ## input two file
   data2 <- fread(opt$file2)
 
-  ## 输入文件类型
+  ## Input file type
   frq <- all(names(data1) %in% c("CHR", "SNP", "A1", "A2", "MAF", "NCHROBS"))
   ld <- all(names(data1) %in% c("CHR_A", "BP_A", "SNP_A", "CHR_B", "BP_B", "SNP_B", "R2"))
 
   if (frq) {
-    ## 计算相关的列统一成"R2"
+    ## Calculate related columns to unify into "R2"
     names(data1)[5] <- names(data2)[5] <- "R2"
 
-    ## 合并
+    ## Merge
     data12 <- inner_join(data1, data2, by = c("CHR", "SNP"), suffix = c("_1", "_2"))
 
-    ## 指定相同的参考碱基
+    ## Specify the same reference base (SNP)
     miss <- apply(data12[, c("A2_2", "A2_1", "A1_1", "A1_2")], 1, function(row) any(row == "0"))
     miss_trains <- (data12$A1_1 != data12$A1_2 | data12$A2_1 != data12$A2_2) & miss
     trans <- data12$A1_1 == data12$A2_2 & data12$A2_1 == data12$A1_2
@@ -60,7 +77,7 @@ if (is.null(opt$file2)) {
       cat("trans:", sum(trans), "matchs:", sum(matchs), "all:", nrow(data12), "\n")
       quit(status = 1)
     } else if (sum(trans) > 0) {
-      ## 更改碱基和基因频率
+      ## Changing base and gene frequencies
       # cat("Ensure that reference allele (", sum(trans), ") are consistent...\n")
       data12$A1_2[trans] <- data12$A1_1[trans]
       data12$A2_2[trans] <- data12$A2_1[trans]
@@ -77,21 +94,21 @@ if (is.null(opt$file2)) {
     if (is.null(opt$col2)) opt$col2 <- opt$col1
     if (is.null(opt$by2c)) opt$by2c <- opt$by1c
 
-    ## 命名匹配列
+    ## Name the matching columns
     bycols1 <- as.numeric(unlist(strsplit(opt$by1c, " ")))
     bycols2 <- as.numeric(unlist(strsplit(opt$by2c, " ")))
     bycol <- paste0("by", cols)
     names(data1)[opt$bycols1] <- names(data2)[opt$bycols2] <- bycol
 
-    ## 命名数据列
+    ## Naming Data Columns
     names(data1)[opt$col1] <- names(data2)[opt$col2] <- "R2"
 
     data12 <- inner_join(data1, data2, by = bycol, suffix = c("_1", "_2"))
   }
 
-  ## 计算相关
+  ## Calculate the correlation coefficient
   cors <- cor(data12$R2_1, data12$R2_2)
 }
 
-## 报告整体相关去情况
+## report the correlation coefficient
 cat(cors, "\n")

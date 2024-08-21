@@ -1,16 +1,32 @@
 #!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
 
-### liwn 2022-07-05 ###
-### 根据条件设定在QMSim标记中选择一定数目的标记 ###
+########################################################################################################################
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Select a certain number of tags from QMSim tags based on the condition settings
+##
+##
+## Usage: ./QMSim_mrk_select.R --freqf "/path/to/freq/file" ...(Please refer to --help for detailed parameters)
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
 
-# 加载需要的程序包
+
+## Load packages required
 # cat("Loading required packages... \n")
 suppressPackageStartupMessages(library("data.table"))
 suppressPackageStartupMessages(library("stringr"))
 suppressPackageStartupMessages(library("dplyr"))
 suppressPackageStartupMessages(library("getopt"))
 
-## 命令行参数
+## Command-line parameters
 spec <- matrix(
   c("freqf",    "F", 2, "character",  "[Required] gene frequency files from QMSim, eg. './%pop%_freq_mrk_001.txt'",
     "popN",     "A", 2, "character",  "[Required] populations name, e.g. 'breedA breedB' ",
@@ -41,13 +57,13 @@ spec <- matrix(
   byrow = TRUE, ncol = 5)
 opt <- getopt(spec = spec)
 
-## 检查参数
+## Check parameters
 if (!is.null(opt$help) || is.null(opt$freqf) || is.null(opt$mapf)) {
-  cat(paste(getopt(spec = spec, usage = TRUERUE), "\n"))
+  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
-## 默认参数
+## Default parameters
 if (is.null(opt$nsel))     opt$nsel <- 50000
 if (is.null(opt$nbin))     opt$nbin <- 500
 if (is.null(opt$binThr))   opt$binThr <- 0.1
@@ -58,14 +74,14 @@ if (is.null(opt$format))   opt$format <- "index"
 if (is.null(opt$out))      opt$out <- "mrk.txt"
 if (is.null(opt$inOut))    opt$inOut <- "ex"
 
-## 随机数种子
+## Random Number Seed
 if (is.null(opt$seed)) {
   opt$seed <- Sys.time()
   write.table(opt$seed, paste0(out, ".seed"))
 }
 set.seed(opt$seed)
 
-## 函数
+## Functions
 insufficient_snps <- function(left, need, step) {
   if (left < need) {
     cat("Insufficient number of SNP (", left, ") after '", step, "' processing!\n", sep = "")
@@ -73,67 +89,67 @@ insufficient_snps <- function(left, need, step) {
   }
 }
 
-## 标记坐标文件
+## Mark coordinate file
 if (!file.exists(opt$mapf)) {
   cat("Map file '", opt$mapf, "' does not exist!\n", sep = "")
   quit(status = 2)
 }
 map <- fread(opt$mapf)
 names(map) <- c("ID", "Chr", "Pos")
-# ## 坐标从cM改为物理位置(x 1e6)
+# ## Change coordinates from cM to physical location(x 1e6)
 # if (max(map$Pos < 1000)) {
 #   names(map)[3] <- "cM"
 #   map$Pos <- map$cM * 1e6
 # }
-## 更改标记ID
+## Change marker ID
 if (!is.null(opt$cid)) {
   map$ID <- paste(map$Chr, map$Pos * 1e6, sep = "_")
 }
-## SNP数目
+## NUmber of SNP
 snp_total <- nrow(map)
 cat("Number of SNPs before filtering:", snp_total, "\n")
 
-## 品种名提取
+## breed name extraction
 pop_name <- unlist(strsplit(opt$popN, " "))
 np <- length(pop_name)
 
-## 基因频率相关大小
+## Gene frequency related size
 opt$difp <- as.numeric(unlist(strsplit(opt$difp, " ")))
 if (length(opt$difp) == 1) opt$difp <- rep(opt$difp, choose(np, 2))
 opt$dif2pq <- as.numeric(unlist(strsplit(opt$dif2pq, " ")))
 if (length(opt$dif2pq) == 1) opt$dif2pq <- rep(opt$dif2pq, choose(np, 2))
 
-## 读取基因频率文件
+## Read gene frequency file
 for (i in 1:np) {
   cat("Processing the gene frequency file of the", i, "population...\n")
 
-  ## 文件名
+  ## File name
   freqf <- gsub("%pop%", pop_name[i], opt$freqf)
 
-  ## 检查文件是否存在
+  ## Check if the file exists
   if (!file.exists(freqf)) {
     cat(paste0("file not found: ", freqf, "\n"))
     quit()
   }
-  
-  ## 读取文件
+
+  ## Read the file
   frqi <- fread(freqf, fill = TRUE)
   names(frqi) <- c("ID", "Gen", "Chr", "Allele_Freq", "Freq2")
 
-  ## 更换ID
+  ## Change ID
   if (!is.null(opt$cid)) {
     frqi$ID <- paste(frqi$Chr, frqi$Pos * 1e6, sep = "_")
   }
-  
-  ## 基因频率来源世代
+
+  ## Source of gene frequency generation
   if (is.null(opt$gen)) {
     opt$gen <- max(frqi$Gen)
   }
 
-  ## 提取指定世代的基因频率
+  ## Extract the gene frequency of a specified generation
   frqi <- subset(frqi, Gen == opt$gen)
 
-  ## 从QMSim文件中解析基因频率
+  ## Analyzing gene frequency from QMSim file
   ref_frq <- str_split_fixed(frqi$Allele_Freq, ":", 2)
   frqi$ref <- as.numeric(ref_frq[, 1])
   frqi$frq <- as.numeric(ref_frq[, 2])
@@ -141,7 +157,7 @@ for (i in 1:np) {
   datai <- frqi[, c("ID", "Chr", "ref", "frq")]
   names(datai)[3:4] <- c(paste0("ref_", pop_name[i]), paste0("frq_", pop_name[i]))
 
-  ## 合并
+  ## Merge
   if (i == 1) {
     datas <- datai
     reffirst <- paste0("ref_", pop_name[1])
@@ -149,7 +165,8 @@ for (i in 1:np) {
   } else {
     datas <- left_join(datas, datai, by = c("ID", "Chr"))
 
-    ## 保证两个品种的参考碱基一致(以品种A为参考)，注意这里默认只存在双等位基因
+    ## Ensure that the reference bases of the two breeds are consistent (with breed A as the reference), 
+    ## and note that only biallelic genes are assumed to exist here by default
     refnow <- paste0("ref_", pop_name[i])
     frqnow <- paste0("frq_", pop_name[i])
 
@@ -163,35 +180,36 @@ for (i in 1:np) {
   }
 }
 
-## 根据用户提供的mrk id过滤标记
+## Filter tags based on the marker ID provided by the user
 if (!is.null(opt$preSel)) {
   if (is.null(opt$preSelC)) opt$preSelC <- 2
   exc <- fread(opt$preSel)
   names(exc)[opt$preSelC] <- "ID"
   include_idx <- datas$ID %in% exc$ID
   if (opt$inOut == "ex") include_idx <- !include_idx
-  
-  ## 检查过滤后的标记数是否充足
+
+  ## Check if the number of filtered marker is sufficient
   insufficient_snps(sum(include_idx), opt$nsel, "user specified exclusion")
-  
-  ## 过滤
+
+  ## filter
   datas <- datas[include_idx, ]
   cat(sum(!include_idx), "variants removed due to user specified exclusion.\n")
 }
 
-## 删除中间文件
+## Delete intermediate files
 rm(datai, frqi, ref_frq)
-## 基因频率列
+
+## Gene frequency column
 frqcols <- paste0("frq_", LETTERS[1:np])
 
-## 匹配标记坐标
+## Match marker coordinates
 datas <- left_join(datas, map, by = c("ID", "Chr"))
 
-## 基因频率均值
+## Mean gene frequency
 cat("Calculating average gene frequency...\n")
 datas$frq_mean <- apply(datas[, (ncol(datas) - np + 1):(ncol(datas))], 1, mean)
 
-## 根据标记在不同品种中分离情况筛选
+## Screening based on the separation status of markers in different breeds
 if (!is.null(opt$seg)) {
   if (opt$seg == "one") {
     include_idx <- datas$frq_mean > 0 & datas$frq_mean < 1
@@ -202,43 +220,43 @@ if (!is.null(opt$seg)) {
     cat("seg can only be one or both, please provide correct parameters.\n")
     quit()
   }
-  
-  ## 检查过滤后的标记数是否充足
+
+  ## Check if the number of filtered SNP is sufficient
   insufficient_snps(sum(include_idx), opt$nsel, "segregation status")
-  
-  ## 过滤
+
+  ## filter
   datas <- datas[include_idx, ]
   cat(sum(!include_idx), "variants removed due to allele segregation.\n")
 }
 
-## 根据MAF筛选
+## Filter based on MAF
 if (!is.null(opt$maf)) {
   include_idx <- apply(subset(datas, select = frqcols), 1, function(x) all(x > opt$maf & x < (1 - opt$maf)))
-  
-  ## 检查过滤后的标记数是否充足
+
+  ## Check if the number of filtered SNPs is sufficient
   insufficient_snps(sum(include_idx), opt$nsel, "maf")
-  
-  ## 过滤
+
+  ## filter
   datas <- datas[include_idx, ]
   cat(sum(!include_idx), "variants removed due to minor allele threshold(s).\n")
 }
 
-## 根据基因频率差异进行筛选
+## Filter based on gene frequency differences
 if (!is.null(opt$frqDif)) {
   index <- 1
   for (i in 1:np) {
     for (j in 1:np) {
       if (i >= j) next
-      ## 位置
+      ## Location
       frqi <- paste0("frq_", pop_name[i])
       frqj <- paste0("frq_", pop_name[j])
 
-      ## 筛选前频率相关
+      ## Correlation of frequencies before filtering
       corij <- cor(datas[[frqi]], datas[[frqj]])
       pop_name_ij <-  paste0(pop_name[i], " and ", pop_name[j])
       cat("correlation of the gene frequencies between", pop_name_ij, "before filtering:", corij, "\n")
 
-      ## 差异大小(绝对值)
+      ## Difference magnitude (absolute value)
       frq_mean <- (datas[[frqi]] + datas[[frqj]]) / 2
       difp <- abs(datas[[frqi]] - datas[[frqj]])
       pqi <- 2 * datas[[frqi]] * (1 - datas[[frqi]])
@@ -247,7 +265,7 @@ if (!is.null(opt$frqDif)) {
       dif2pq <- abs(pqi - pqj) / pqij
       dif2pq[pqij == 0] <- 0
 
-      ## 符合要求的标记
+      ## Markers that meet the criteria
       if (opt$frqDif == "high") {
         diffp <- difp >= opt$difp[index]
         diff2pq <- dif2pq >= opt$dif2pq[index]
@@ -259,10 +277,10 @@ if (!is.null(opt$frqDif)) {
         quit() 
       }
 
-      ## 符合要求的标记
+      ## Markers that meet the criteria
       include_idx <- diffp & diff2pq
 
-      ## 报告
+      ## Report
       cat("number of markers excluded due to gene frequency between ", pop_name_ij, ":", sum(!include_idx), "\n")
       # cat("number of markers excluded due to gene (p) frequency between ", popNij, ":", sum(!diffp), "\n")
       # cat("number of markers excluded due to genotype (2pq) frequency between ", popNij, ":", sum(!diff2pq), "\n")
@@ -273,13 +291,13 @@ if (!is.null(opt$frqDif)) {
         include_idxs <- include_idxs & include_idx
       }
 
-      ## 检查过滤后的标记数是否充足
+      ## Check if the number of markers after filtering is sufficient
       insufficient_snps(sum(include_idxs), opt$nsel, "gene frequency difference")
 
       index <- index + 1
     }
   }
-  ## 过滤
+  ## Filtering
   datas <- datas[include_idxs, ]
   cat(sum(!include_idxs), "variants removed due to gene frequency difference.\n")
 }
@@ -287,7 +305,7 @@ if (!is.null(opt$frqDif)) {
 cat("correlation of the gene frequencies between breeds after filtering:\n")
 cor(subset(datas, select = frqcols))
 
-## 把候选标记划分到不同区间
+## Assign candidate markers to different regions
 if (!is.null(opt$binDiv)) {
   cat("assigning markers to different bins...\n")
   if (opt$binDiv == "pos") {
@@ -302,10 +320,10 @@ if (!is.null(opt$binDiv)) {
       star <- star + nbin
     }
 
-    ## 总的区间数
+    ## Total number of regions
     nbin <- star
 
-    ## 区间赋值
+    ## Assign regions
     if (length(bin) == nrow(datas)) {
       datas$bins <- bin
     } else {
@@ -326,15 +344,15 @@ if (!is.null(opt$binDiv)) {
   datas$bins <- 1
 }
 
-## 候选标记数
+## Number of candidate markers
 cat("Number of candidate SNPs:", nrow(datas), "\n")
 
-## 在不同的区间内选择候选标记
+## Select candidate markers in different regions
 if (opt$binPdf == "eql") {
-  ## 每个区间需要的标记数
+  ## Number of markers needed in each region
   nsnp_bini <- opt$nsel %/% length(unique(datas$bins)) + 1
 
-  ## 检查区间内标记是否够抽样数
+  ## Check if the number of markers in each region is sufficient for sampling
   bin_count <- table(datas$bins)
   insuffix <- sum(bin_count < nsnp_bini)
   if (insuffix > 0) {
@@ -342,10 +360,10 @@ if (opt$binPdf == "eql") {
       if (insuffix <= opt$fixPer / 100 * nbin) {
         cat("The number of markers in some bins is not enough, adjust the bins.\n")
 
-        ## 标记数不足的区间
+        ## Regions with insufficient markers
         insuff_bins <- as.numeric(names(bin_count)[bin_count < nsnp_bini])
 
-        ## 在每个区间的上下游取标记
+        ## Select markers from adjacent regions
         allow_miss <- opt$fixPer / 100 * nsnp_bini
         for (i in insuff_bins) {
           bini_insuffix <- nsnp_bini - sum(datas$bins == i)
@@ -368,7 +386,7 @@ if (opt$binPdf == "eql") {
         quit()
       }
 
-      ## 调整后重新检查
+      ## Recheck after adjustment
       bin_count <- table(datas$bins)
       insuffix <- sum(bin_count < nsnp_bini)
       if (insuffix > 0) {
@@ -381,7 +399,7 @@ if (opt$binPdf == "eql") {
     }
   }
 
-  ## 在区间内抽样
+  ## Sampling within regions
   mrk_sel <- datas %>%
     group_by(bins) %>%
     slice_sample(n = nsnp_bini)
@@ -393,28 +411,26 @@ if (opt$binPdf == "eql") {
   quit()
 }
 
-
-## 输出map文件
-options(scipen = 10) ## 防止输出SNP物理位置时显示科学计数法
+## Output map file
+options(scipen = 10) ## Prevent scientific notation when outputting SNP physical positions
 if (!is.null(opt$outmapf)) {
   map_out <- mrk_sel[, c("Chr", "ID", "Pos")]
   map_out$pos <- map_out$Pos * 1e6
 
-  ## 排序
+  ## Sorting
   map_out <- map_out[order(map_out$Chr, map_out$Pos), ]
 
-  ## 处理位置相同的标记
+  ## Handle markers with the same position
   pos_dup <- duplicated(map_out[, c("Chr", "Pos")])
   if (any(pos_dup)) {
     map_out$Pos[pos_dup] <- map_out$Pos[pos_dup] + 1
   }
 
-  ## 输出文件
+  ## Output file
   write.table(map_out, opt$outmapf, row.names = FALSE, col.names = FALSE, quote = FALSE)
 }
 
-
-## 输出文件格式
+## Output file format
 if (opt$format == "id") {
   out <- mrk_sel$ID
 } else if (opt$format == "index") {
@@ -424,7 +440,7 @@ if (opt$format == "id") {
   quit()
 }
 
-## 基因频率散点图
+## Gene frequency scatter plot
 if (!is.null(opt$plotfrq)) {
   # png(paste0(opt$plotfrq, ".png"), width = 600 * 1.5, height = 600, bg = "white")
   CairoPNG(paste0(opt$plotfrq, ".png"), width = 600 * 1.5, height = 600, bg = "white")
@@ -433,16 +449,16 @@ if (!is.null(opt$plotfrq)) {
   cat("gene frequency plot output to:", paste0(opt$plotfrq, ".png"), "\n")
 }
 
-## 报告
+## Report
 cat("The number of markers finally selected:", sum(out), "\n")
 cat("correlation of the gene frequencies between breeds:\n")
 cor(subset(datas, select = frqcols))
 
-## 输出选择的标记
+## Output selected markers
 write.table(out, opt$out, row.names = FALSE, col.names = FALSE, quote = FALSE)
 cat("File output to:", opt$out, "\n")
 
-## 另一个品种的index
+## Index for another breed
 if (!is.null(opt$Mapf)) {
   out2 <- as.numeric(map2$ID %in% mrk_sel$ID)
   write.table(out2, opt$Out, row.names = FALSE, col.names = FALSE, quote = FALSE)

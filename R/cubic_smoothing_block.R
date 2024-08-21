@@ -1,15 +1,31 @@
 #!/public/home/liujf/software/program/R-4.3.1-no-dev/bin/Rscript
-## 根据自编的C语言程序计算的mean R2值进行区域划分
-# debug
-# opt <- list(files="breedAsq breedBsq", mapf = "breedAsq.map")
 
-## 加载需要的程序包
+########################################################################################################################
+## Version: 1.3.0
+## Author:    Liweining liwn@cau.edu.cn
+## Orcid:     0000-0002-0578-3812
+## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
+## Date:      2024-08-20
+##
+## Function：
+## Genomic block partitioning based on the mean R2 value calculated by a self written C language program
+##
+##
+## Usage: ./cubic_smoothing_block.R --r2 "/path/to/r2/file" ...(Please refer to --help for detailed parameters)
+##
+## License:
+##  This script is licensed under the GPL-3.0 License.
+##  See https://www.gnu.org/licenses/gpl-3.0.en.html for details.
+########################################################################################################################
+
+
+## Loading required packages
 cat("Loading required packages... \n\n")
 suppressPackageStartupMessages(library("getopt"))
 suppressPackageStartupMessages(library("data.table"))
 suppressPackageStartupMessages(library("Cairo"))
 
-## 参数列表
+## Parameter list
 spec <- matrix(
   c("r2",   "I", 1, "character", "[Required] R2 mean\n",
     "spar", "S", 1, "double",    "[Optional] Smoothness (0-1) when fitting curves [0.2]\n",
@@ -22,24 +38,24 @@ spec <- matrix(
 )
 opt <- getopt(spec = spec)
 
-## 检查参数
+## Check parameters
 if (!is.null(opt$help) || is.null(opt$r2)) {
-  cat(paste(getopt(spec = spec, usage = TRUERUE), "\n"))
+  cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
 
-## 默认参数
+## Default parameters
 if (is.null(opt$out)) opt$out <- "cubic_LD_block.txt"
 if (is.null(opt$spar)) opt$spar <- 0.2
 if (is.null(opt$diff)) opt$diff <- 0.05
 
-## 函数定义
+## Function definition
 find_local_min <- function(x, diff = 0.2) { # nolint
   n <- length(x)
   peaks <- which(diff(sign(diff(x))) < 0) + 1
   valleys <- which(diff(sign(diff(x))) > 0) + 1
 
-  ## 加上端点
+  ## Add endpoints
   if (x[1] > x[2]) {
     peaks <- c(1, peaks)
   } else if (x[1] > x[2]) {
@@ -70,34 +86,34 @@ find_local_min <- function(x, diff = 0.2) { # nolint
     if (left_peak && right_peak) final <- c(final, i)
   }
 
-  ## 端点处不要
+  ## Exclude endpoints
   final <- final[final != 1 & final != n]
 
   return(final)
 }
 
-## 读取文件
+## Read file
 r2 <- fread(opt$r2)
 
-## 拟合曲线
+## Fit curve
 fit <- smooth.spline(r2$V1, spar = 0.2)
 
-## 搜索符合要求的极低值点
+## Search for local minimum points that meet the criteria
 point <- find_local_min(fit$y, 0.05)
 
-## 计算每个区间的SNP数
+## Calculate the number of SNPs in each region
 point2 <- c(0, point, length(fit$y))
 n <- length(point2)
 nsnp <- point2[2:n] - point2[1:(n - 1)]
 nsnp[length(nsnp)] <- nsnp[length(nsnp)] + 1
 
-## SNP数目检查
+## SNP count check
 if (sum(nsnp) != (nrow(r2) + 1)) {
   cat("The number of SNPs in the result is not equal to that in the input file!\n")
   quit()
 }
 
-## 输出中包含其他信息
+## Output SNP count file with additional information
 if (!is.null(opt$bim)) {
   if (file.exists(opt$bim)) {
     bim <- fread(opt$bim)
@@ -115,20 +131,20 @@ if (!is.null(opt$bim)) {
   }
 }
 
-## 输出SNP数目文件
+## Output SNP count file
 write.table(nsnp, opt$out, row.names = FALSE, col.names = FALSE, quote = FALSE)
-cat("bins definition file has been output to:", opt$out, "\n")
+cat("Bins definition file has been output to:", opt$out, "\n")
 
-## 作图
+## Plotting
 if (!is.null(opt$plot)) {
   CairoPNG(paste0(opt$out, ".png"), width = 1600, height = 800)
   plot(r2$V1, col = "grey", pch = 20,
-       ylab = "local mean r2",
-       xlab = "SNP rank")
+    ylab = "local mean r2",
+    xlab = "SNP rank")
   lines(fit, col = "red", lwd = 2)
   for (h in point) {
     abline(v = h, col = "blue", lwd = 1)
   }
   dev.off()
-  cat("plot has been output to:", paste0(opt$out, ".png"), "\n")
+  cat("Plot has been output to:", paste0(opt$out, ".png"), "\n")
 }
