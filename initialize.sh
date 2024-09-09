@@ -2,7 +2,7 @@
 
 ########################################################################################################################
 ## Version: 1.3.0
-## Author:  Liweining liwn@cau.edu.cn
+## Author:  Liweining liwn@jaas.ac.cn
 ## Date:    2023-07-09
 ## 
 ## Used to initialize the path in the project script, including

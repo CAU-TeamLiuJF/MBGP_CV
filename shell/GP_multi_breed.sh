@@ -2,8 +2,8 @@
 
 
 ########################################################################################################################
-## Version: 1.3.0
-## Author:    Liweining liwn@cau.edu.cn
+## Version: 1.3.1
+## Author:    Liweining liwn@jaas.ac.cn
 ## Orcid:     0000-0002-0578-3812
 ## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
 ## Date:      2024-07-05
@@ -403,13 +403,14 @@ if [[ ${method} == 'mbBayesAB' ]]; then
       done
 
       ## Define blocks as required
-      $fix_frq_ld_bolck \
-        --prefixs "${popN[*]}" \
-        --bin_merge ${bin} \
-        --win ${nsnp_win} \
-        --seg ${r2_merge} \
-        --map ${bfileM}.bim \
-        --out ${binf}~
+      [[ ! ${debug} ]] && \
+        $fix_frq_ld_bolck \
+          --prefixs "${popN[*]}" \
+          --bin_merge ${bin} \
+          --win ${nsnp_win} \
+          --seg ${r2_merge} \
+          --map ${bfileM}.bim \
+          --out ${binf}~
 
       ## Extract a single-column file indicating the number of SNPs in each block
       awk '{print $3}' ${binf}~ >${binf}
@@ -425,13 +426,14 @@ if [[ ${method} == 'mbBayesAB' ]]; then
       fi
 
       ## Generate partitioning file
-      $lava_cubic_bolck \
-        --bfile ${bfile_block} \
-        --win ${win} \
-        --maf ${maf} \
-        --type ${bin} \
-        --minSize ${nsnp_win} \
-        --out ${binf}~ >${logp}/${bin}_${ref}_block_${SLURM_JOB_ID}.log
+      [[ ! ${debug} ]] && \
+        $lava_cubic_bolck \
+          --bfile ${bfile_block} \
+          --win ${win} \
+          --maf ${maf} \
+          --type ${bin} \
+          --minSize ${nsnp_win} \
+          --out ${binf}~ >${logp}/${bin}_${ref}_block_${SLURM_JOB_ID}.log
 
       ## Extract a single-column file indicating the number of SNPs in each bin
       sed '1d' ${binf}~ | awk '{print $5}' >${binf}
@@ -768,7 +770,7 @@ else
   if [[ ${method} == "bayesR" ]]; then
     gebvf=EBV_bayesR.txt
   else
-    gebvf=EBV_${bin}_y1.txt
+    gebvf=EBV_${bin}_y%i%.txt
   fi
 
   ## MT-Bayes model

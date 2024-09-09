@@ -3,7 +3,7 @@
 
 ########################################################################################################################
 ## Version: 1.3.0
-## Author: Weining Li liwn@cau.edu.cn
+## Author: Weining Li liwn@jaas.ac.cn
 ## Date: 2023-07-05
 ##
 ## Calculate the average genetic distance for the provided populations

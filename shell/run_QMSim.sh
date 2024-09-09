@@ -2,11 +2,11 @@
 #SBATCH --job-name=QMSim
 
 ########################################################################################################################
-## Version: 1.3.0
-## Author:    Liweining liwn@cau.edu.cn
+## Version: 1.3.1
+## Author:    Liweining liwn@jaas.ac.cn
 ## Orcid:     0000-0002-0578-3812
 ## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
-## Date:      2024-08-20
+## Date:      2024-08-22
 ##
 ## Function：
 ## Generate the required parameter file *. prm for QMSim based on the specified parameters, and run QMSim for population simulation
@@ -40,8 +40,8 @@ while true; do
     --extentLDs )    extentLDs="$2";    shift 2 ;; ## Number of generations in the last stable LD phase for each breed ["10 10"]
     --last_males )   last_males="$2";   shift 2 ;; ## Number of males in the population in the last phase for each breed ["100 10"]
     --last_females ) last_females="$2"; shift 2 ;; ## Number of females in the population in the last phase for each breed ["500 50"]
-    --founder_sel )  founder_sel="$2";  shift 2 ;; ## Criteria for selecting individuals from the historical population for each breed ["tbv /h,tbv /l"]
-    --seg_sel )      seg_sel="$2";      shift 2 ;; ## Criteria for selecting individuals during the generation selection phase for each breed ["phen /h,phen /l"]
+    --founder_sel )  founder_sel="$2";  shift 2 ;; ## Selecting Criteria of the historical population for each breed ["tbv /h,tbv /l"]
+    --seg_sel )      seg_sel="$2";      shift 2 ;; ## Selecting Criteria during the generation selection phase for each breed ["phen /h,phen /l"]
     --last_sel )     last_sel="$2";     shift 2 ;; ## Criteria for selecting individuals during the LD stabilization phase for each breed ["rnd,rnd"]
     --last_litters ) last_litters="$2"; shift 2 ;; ## Number of individuals per litter during the LD stabilization phase for each breed ["10 10"]
     --geno_gen )     geno_gen="$2";     shift 2 ;; ## Generation(s) to output genotyped individuals [8-10]
@@ -53,7 +53,7 @@ while true; do
     --QMSim_rep )    QMSim_rep="$2";    shift 2 ;; ## Number of QMSim simulation replicates [1]
     --bottleneck )   bottleneck="$2";   shift 2 ;; ## Population size during the bottleneck phase in the historical population simulation [250]
     --logf )         logf="$2";         shift 2 ;; ## Log file name [QMSim_${sim_dir}.txt]
-    --code )         code="$2";         shift 2 ;; ## Directory where script files are located, e.g., /BIGDATA2/cau_jfliu_2/liwn/code [automatically obtained]
+    --code )         code="$2";         shift 2 ;; ## Directory where script files are located, e.g., /home/liwn/code [automatically obtained]
     --prmpath )      prmpath="$2";      shift 2 ;; ## Path to the parameter template files [${code}/prm]
     --sim_dir )      sim_dir="$2";      shift 2 ;; ## Name of the output folder for simulation results; this folder should not already exist [rep1]
   -h | --help)    grep ";; ##" $0 | grep -v help && exit 1 ;;
@@ -146,8 +146,8 @@ IFS=, read -ra founder_sel <<<"$founder_sel"
 IFS=, read -ra seg_sel <<<"$seg_sel"
 IFS=, read -ra last_sel <<<"$last_sel"
 
-mapfile -t gid_gen < <(seq ${geno_gen:0:1} ${geno_gen:2:3})
-gen_all=${geno_gen:2:3}
+mapfile -t gid_gen < <(seq ${geno_gen//-/ })
+gen_all=${gid_gen[-1]}
 rand=$RANDOM
 
 ## Check if the parameter card template file exists
@@ -172,46 +172,46 @@ sed -i "s/%bottleneck%/${bottleneck}/" temp_${rand}.prm
 
 ## Subpopulation
 for i in $(seq 0 $((np - 1))); do
-  sed "s/%pop%/${breeds[${i}]}/" $prm_sub >${breeds[${i}]}.prm
-  sed -i "s#%founder_select%#${founder_sel[${i}]}#" ${breeds[${i}]}.prm
-  sed -i "s#%seg_select%#${seg_sel[${i}]}#" ${breeds[${i}]}.prm
-  sed -i "s#%last_select%#${last_sel[${i}]}#" ${breeds[${i}]}.prm
-  sed -i "s/%md%/rnd/" ${breeds[${i}]}.prm
-  sed -i "s/%accur%/${QMSim_qtlh2}/" ${breeds[${i}]}.prm
-  sed -i "s/%seg_ng%/${seg_gens[${i}]}/" ${breeds[${i}]}.prm
-  sed -i "s/%last_male%/${last_males[${i}]}/" ${breeds[${i}]}.prm
-  sed -i "s/%last_female%/${last_females[${i}]}/" ${breeds[${i}]}.prm
-  sed -i "s/%extentLD%/${extentLDs[${i}]}/" ${breeds[${i}]}.prm
-  sed -i "s/%last_litter_size%/${last_litters[${i}]}/" ${breeds[${i}]}.prm
-  sed -i "s/%geno_gen%/${gid_gen[*]}/g" ${breeds[${i}]}.prm
-  sed -i "s/%freq_gen%/${gid_gen[*]}/g" ${breeds[${i}]}.prm
+  sed "s/%pop%/${breeds[${i}]}/" $prm_sub >${breeds[${i}]}_${rand}.prm
+  sed -i "s#%founder_select%#${founder_sel[${i}]}#" ${breeds[${i}]}_${rand}.prm
+  sed -i "s#%seg_select%#${seg_sel[${i}]}#" ${breeds[${i}]}_${rand}.prm
+  sed -i "s#%last_select%#${last_sel[${i}]}#" ${breeds[${i}]}_${rand}.prm
+  sed -i "s/%md%/rnd/" ${breeds[${i}]}_${rand}.prm
+  sed -i "s/%accur%/${QMSim_qtlh2}/" ${breeds[${i}]}_${rand}.prm
+  sed -i "s/%seg_ng%/${seg_gens[${i}]}/" ${breeds[${i}]}_${rand}.prm
+  sed -i "s/%last_male%/${last_males[${i}]}/" ${breeds[${i}]}_${rand}.prm
+  sed -i "s/%last_female%/${last_females[${i}]}/" ${breeds[${i}]}_${rand}.prm
+  sed -i "s/%extentLD%/${extentLDs[${i}]}/" ${breeds[${i}]}_${rand}.prm
+  sed -i "s/%last_litter_size%/${last_litters[${i}]}/" ${breeds[${i}]}_${rand}.prm
+  sed -i "s/%geno_gen%/${gid_gen[*]}/g" ${breeds[${i}]}_${rand}.prm
+  sed -i "s/%freq_gen%/${gid_gen[*]}/g" ${breeds[${i}]}_${rand}.prm
 
   ## Merge into the main parameter file
-  cat ${breeds[${i}]}.prm >>temp_${rand}.prm
-  rm ${breeds[${i}]}.prm
+  cat ${breeds[${i}]}_${rand}.prm >>temp_${rand}.prm
+  rm ${breeds[${i}]}_${rand}.prm
 done
 
 ## Genome and output parameters
-sed "s/%nmloci%/${nmloc}/" $prm_geno >genome.prm
-sed -i "s/%nchr%/${nchr}/" genome.prm
-sed -i "s/%nqloci%/${nqloci}/" genome.prm
+sed "s/%nmloci%/${nmloc}/" $prm_geno >genome_${rand}.prm
+sed -i "s/%nchr%/${nchr}/" genome_${rand}.prm
+sed -i "s/%nqloci%/${nqloci}/" genome_${rand}.prm
 
 ## Final simulation parameter card
-cat genome.prm >>temp_${rand}.prm
-rm genome.prm
+cat genome_${rand}.prm >>temp_${rand}.prm
+rm genome_${rand}.prm
 
 ## Project directory
 cd ${proj} || exit 5
 
 ## Output parameter card
-sed "s#%out_dir%#${sim_dir}#" ${prmpath}/temp_${rand}.prm >QMSim.prm
+sed "s#%out_dir%#${sim_dir}#" ${prmpath}/temp_${rand}.prm >QMSim_${rand}.prm
 rm ${prmpath}/temp_${rand}.prm
 
 ## QMSim simulation program running
-QMSim QMSim.prm >> ${logf} 2>&1
+QMSim QMSim_${rand}.prm >> ${logf} 2>&1
 
 ## Change working path
-rm QMSim.prm
+rm QMSim_${rand}.prm
 cd ${proj}/${sim_dir} || exit
 
 ## Save QMSim simulation seeds

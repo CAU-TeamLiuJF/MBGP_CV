@@ -3,7 +3,7 @@
 
 ########################################################################################################################
 ## Version: 1.3.0
-## Author:    Liweining liwn@cau.edu.cn
+## Author:    Liweining liwn@jaas.ac.cn
 ## Orcid:     0000-0002-0578-3812
 ## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
 ## Date:      2024-08-20
@@ -58,7 +58,7 @@ opt <- getopt(spec = spec)
 
 ## Check parameters
 if (!is.null(opt$help) || (is.null(opt$phe_all) && is.null(opt$tbvf)) ||
-      (is.null(opt$dir_val) && is.null(opt$ebvf))) {
+    (is.null(opt$dir_val) && is.null(opt$ebvf))) {
   cat(paste(getopt(spec = spec, usage = TRUE), "\n"))
   quit()
 }
@@ -127,7 +127,7 @@ accs <- data.frame(
 )
 
 ## Calculation of accuracy
-for (r in 1:opt$rep) { # nolint r=1;f=4
+for (r in 1:opt$rep) { # nolint r=1;f=1
   for (f in 1:opt$fold) {
     if (!is.null(opt$ebvf)) {
       ## File name

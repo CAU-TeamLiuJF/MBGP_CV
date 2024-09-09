@@ -2,7 +2,7 @@
 
 ########################################################################################################################
 ## Version: 1.3.0
-## Author:    Liweining liwn@cau.edu.cn
+## Author:    Liweining liwn@jaas.ac.cn
 ## Orcid:     0000-0002-0578-3812
 ## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
 ## Date:      2024-08-20

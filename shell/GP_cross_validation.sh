@@ -3,7 +3,7 @@
 
 ########################################################################################################################
 ## Version:   1.2.0
-## Author:    Liweining liwn@cau.edu.cn
+## Author:    Liweining liwn@jaas.ac.cn
 ## Orcid:     0000-0002-0578-3812
 ## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
 ## Date:      2024-07-07
@@ -134,6 +134,7 @@ run_QMSim=${code}/shell/run_QMSim.sh
 genome_process=${code}/shell/QMSim_genome_process.sh
 accuracy_summ=${code}/shell/accuracy_summary.sh
 varComp_summ=${code}/shell/varcomp_summary.sh
+time_summ=${code}/shell/time_summary.sh
 block_define=${code}/shell/lava_cubic_bolck.sh
 func=${code}/shell/function.sh
 
@@ -518,7 +519,6 @@ elif [[ ${type} == "single" || ${type} == "multi" ]]; then
       --ref ${ref} \
       --seed ${seed} \
       --bin ${bin} \
-      --overwrite \
       ${prior} \
       ${dirPre} \
       ${rg_local} \
@@ -544,6 +544,18 @@ elif [[ ${type} == "accur" ]]; then
 elif [[ ${type} == "var" ]]; then
   ## Genetic parameter statistics
   $varComp_summ \
+    --proj "${proj}" \
+    --breeds "${breeds}" \
+    --traits "${traits}" \
+    --bin "${bin}" \
+    --code "${code}" \
+    --cor "${rg_sim}" \
+    --rep "${rep}" \
+    --dist "${rg_dist}" \
+    ${out} &>>${logf}
+elif [[ ${type} == "time" ]]; then
+  ## Genetic parameter statistics
+  $time_summ \
     --proj "${proj}" \
     --breeds "${breeds}" \
     --traits "${traits}" \
