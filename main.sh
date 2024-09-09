@@ -1,8 +1,8 @@
 #!/bin/usr/bash
 
 ########################################################################################################################
-## Version:   1.3.0
-## Author:    Liweining liwn@cau.edu.cn
+## Version:   1.3.1
+## Author:    Liweining liwn@jaas.ac.cn
 ## Orcid:     0000-0002-0578-3812
 ## Institute: College of Animal Science and Technology, China Agricul-tural University, Haidian, 100193, Beijing, China
 ## Date:      2024-08-21
@@ -210,10 +210,11 @@ for source in Xie2021 Keller2022; do
   done
 
   ## Statistical Accuracy and Variance Component Results
-  for type in accur var; do
+  for type in accur var time; do
     $GP_cross \
       --type ${type} \
       --proj ${pro} \
+      --bin "fix lava cubic" \
       --breeds "${breeds[*]}" \
       --traits "${traits_cal[*]}"
   done
@@ -240,6 +241,9 @@ for scene in Two Three; do
     breed_comb=("A B" "A C" "A B C")
   fi
 
+  ## Load parameters
+  source ${data_path}/parameter.sh
+
   for r in {1..20}; do
     proi=${pro}/rep${r}
 
@@ -255,9 +259,6 @@ for scene in Two Three; do
     ## run QMSim
     srun -c20 --mem=100G \
       QMSim QMSim_rep${r}.prm
-
-    ## Load parameters
-    source ${data_path}/parameter.sh
 
     ## Screening individuals and SNP markers from simulated populations
     $GP_cross \
@@ -437,13 +438,15 @@ for scene in Two Three; do
   done
 
   ## Statistical Accuracy and Variance Component Results
-  for type in accur var; do
+  for type in accur var time; do
     $GP_cross \
       --type ${type} \
       --proj ${pro} \
       --rep "$(seq -s " " 1 20)" \
       --rg_dist "identical uniform" \
+      --bin "fix lava cubic" \
       --rg_sim "${cors}" \
       --breeds "${breed_sim}"
   done
 done
+
