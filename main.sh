@@ -281,7 +281,12 @@ for scene in Two Three; do
       --out "merge"
 
     ## Random number seed
-    seed=$(cat ${pro}/rep${r}/random.seed)
+    if [[ -s "${pro}/rep${r}/random.seed" ]]; then
+      seed=$(cat "${pro}/rep${r}/random.seed")
+    else
+      seed=$RANDOM
+      echo ${seed} >"${pro}/rep${r}/random.seed"
+    fi
 
     ## genome partitioning file name
     if [[ ${scene} == "Two" ]]; then

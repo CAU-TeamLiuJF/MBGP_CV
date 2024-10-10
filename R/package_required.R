@@ -20,7 +20,7 @@
 
 
 ## List of R packages to be checked
-packages <- c("data.table", "LAVA", "getopt", "MASS", "RcppEigen", "Matrix", "ggplot2", "reshape2",
+packages <- c("data.table", "LAVA", "getopt", "MASS", "RcppEigen", "Matrix", "ggplot2", "reshape2", "tidyr",
   "pedigree", "RcppArmadillo", "dplyr", "coda", "lattice", "stringr", "Cairo", "Rcpp", "reshape")
 
 ## Check and install missing packages
