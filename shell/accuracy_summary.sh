@@ -76,6 +76,7 @@ read -ra cors_array <<<"$cor"
 ############## Accuracy results statistics (different combinations) ##########
 ##############################################################################
 echo "Simulation_repeats correlation_distribution correlation prediction_type model reference_population breed trait number_of_repeats number_of_cross-validation_folds accuracy unbiasedness rank_correlation validation_population_size" >${out}
+# echo "sim_rep dist rg ref model ref breed trait rep fold accuracy unbiasedness rank val" >${out}
 for t in "${traits_array[@]}"; do
   for r in "${reps_array[@]}"; do
     for d in "${dists_array[@]}"; do

@@ -687,9 +687,9 @@ for r in $(seq 1 ${rep}); do
 
       ## Breeding value estimation
       if [[ ${dmu4} ]]; then
-        job_pool_run run_dmu4 ${DIR} ${vali_path}
+        job_pool_run /usr/bin/time -v run_dmu4 ${DIR} ${vali_path}
       else
-        job_pool_run run_dmuai ${DIR} ${vali_path}
+        job_pool_run /usr/bin/time -v run_dmuai ${DIR} ${vali_path}
       fi
     fi
 
@@ -699,7 +699,7 @@ for r in $(seq 1 ${rep}); do
     ## MT-BayesABLD Model
     if [[ ${method} == 'mbBayesAB' ]]; then
       ## Get GEBVs
-      job_pool_run mbBayesABLD \
+      job_pool_run /usr/bin/time -v mbBayesABLD \
         --bfile ${bfileM} \
         --phef ${vali_path}/pheno.txt \
         --fix "${fix_eff}" \
@@ -721,7 +721,7 @@ for r in $(seq 1 ${rep}); do
     if [[ ${method} == 'bayesR' ]]; then
       if [[ ${type} == 'single' ]]; then
         ## Get GEBVs
-        job_pool_run $bayesR \
+        job_pool_run /usr/bin/time -v $bayesR \
           --proj "${vali_path}" \
           --bfile "${bfileM}" \
           --fix "${fix_eff}" \

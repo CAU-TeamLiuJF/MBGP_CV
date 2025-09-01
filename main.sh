@@ -1,4 +1,4 @@
-#!/bin/usr/bash
+#!/usr/bin/bash
 
 ########################################################################################################################
 ## Version:   1.3.1
@@ -28,7 +28,7 @@
 
 
 ## Initialize the script, modify some paths in the script (path need to be modefied)
-# /public/home/liujf/liwn/code/GitHub/mbBayesABLDLD/initialize.sh
+# /public/home/liujf/liwn/code/GitHub/mbBayesABLD/initialize.sh
 
 ## Path of main script
 code=/public/home/liujf/liwn/code/GitHub/MBGP_CV
@@ -163,7 +163,6 @@ for source in Xie2021 Keller2022; do
 
       ## Calculate the accuracy of GBLUP model in multi-breed prediction with multi-trait Bayesian model
       for bin in fix lava cubic; do
-        for burnin in 40000 60000 80000 100000; do
         sbatch -c50 --mem=80G --output=${pro}/log/mbBayesAB_${bin}.log \
           $GP_cross \
           --type multi \
@@ -178,12 +177,8 @@ for source in Xie2021 Keller2022; do
           --phef ${phef} \
           --thread 50 \
           --bin ${bin} \
-          --burnin ${burnin} \
-          --iter $((burnin + 10000)) \
-          --dirPre "iter$((burnin + 10000))" \
           --suffix
         sleep 20
-        done
       done
     done <"${data_path}/breeds_combination.txt"
   done
@@ -398,27 +393,22 @@ for scene in Two Three; do
           sleep 5
 
           ## Calculate the accuracy of GBLUP model in multi-breed prediction with multi-trait Bayesian model
-          for bin in cubic; do # fix lava 
-            for burnin in 40000 60000 80000 100000; do
-              sbatch -c50 --mem=80G --output=${proi}/log/${bin}.log \
-                $GP_cross \
-                --type multi \
-                --method "mbBayesAB" \
-                --phef ${proi}/pheno_sim.txt \
-                --bfile ${pro}/rep${r}/merge \
-                --proj ${proi} \
-                --breeds "${bc}" \
-                --code ${code} \
-                --tbv_col 6 \
-                --seed ${seed} \
-                --thread 50 \
-                --bin ${bin} \
-                --burnin ${burnin} \
-                --iter $((burnin + 10000)) \
-                --dirPre "iter$((burnin + 10000))" \
-                --suffix
-              sleep 20
-            done
+          for bin in cubic fix lava; do
+            sbatch -c50 --mem=80G --output=${proi}/log/${bin}.log \
+              $GP_cross \
+              --type multi \
+              --method "mbBayesAB" \
+              --phef ${proi}/pheno_sim.txt \
+              --bfile ${pro}/rep${r}/merge \
+              --proj ${proi} \
+              --breeds "${bc}" \
+              --code ${code} \
+              --tbv_col 6 \
+              --seed ${seed} \
+              --thread 50 \
+              --bin ${bin} \
+              --suffix
+            sleep 20
           done
         done
 
@@ -464,4 +454,3 @@ for scene in Two Three; do
       --breeds "${breed_sim}"
   done
 done
-

@@ -22,7 +22,7 @@
 ################################################################
 ## NOTE: This requires GNU getopt.  On Mac OS X and FreeBSD, you have to install this
 ## Parameters
-TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,prior:,bin:,bin_sim:,tbv_col:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,min:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,debug,suffix,dense,noCov,append,overlap,evenly,help \
+TEMP=$(getopt -o h --long code:,proj:,type:,breeds:,thread:,traits:,trait:,h2s:,rg_sim:,rg_pri:,rg_dist:,means:,method:,phef:,pedf:,binf:,nqtl:,nbin_cor:,nsnp_cor:,nsnp_win:,win:,prior:,bin:,bin_sim:,tbv_col:,all_eff:,ran_eff:,iter:,burnin:,ref:,dirPre:,nbin:,min:,bfile:,seed:,fold:,rep:,gen:,nsnp:,nsnp_sim:,out:,sim_dir:,nginds:,seg_gens:,extentLDs:,last_males:,last_females:,founder_sel:,seg_sel:,last_sel:,last_litters:,geno_gen:,maf:,binDiv:,binThr:,nchr:,nmloc:,nqloci:,QMSim_h2:,debug,suffix,dense,noCov,append,overlap,evenly,help \
               -n 'javawrap' -- "$@")
 if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 eval set -- "$TEMP"
@@ -51,6 +51,7 @@ while true; do
     --nbin_cor ) nbin_cor="$2"; shift 2 ;; ## Number of intervals when genetic correlation exists between breeds [10]
     --nsnp_sim ) nsnp_sim="$2"; shift 2 ;; ## Number of markers per interval when partitioning by fixed number in trait simulation [60]
     --bin_sim )  bin_sim="$2";  shift 2 ;; ## Interval partitioning method in trait simulation, binf path/win/chr [win]
+    --win )      win="$2";      shift 2 ;; ## Window size when calculating the mean R2 for specified SNPs [50]
     --nsnp_win ) nsnp_win="$2"; shift 2 ;; ## Number of markers per interval when partitioning by fixed number for multi-breed prediction [100]
     --nqtl )     nqtl="$2";     shift 2 ;; ## Number of QTLs in trait simulation [300]
     --nbin )     nbin="$2";     shift 2 ;; ## Approximate number of intervals when partitioning by fixed SNP number for multi-breed prediction [NULL]
@@ -166,6 +167,7 @@ nbin_cor=${nbin_cor:="10"}
 nsnp_sim=${nsnp_sim:="60"}
 nsnp=${nsnp:="50000"}
 nsnp_win=${nsnp_win:="100"}
+win=${win:="50"}
 bin_sim=${bin_sim:="win"}
 type=${type:="sim"}
 trait=${trait:="${traits}"}
@@ -513,6 +515,7 @@ elif [[ ${type} == "single" || ${type} == "multi" ]]; then
       --tbvf ${tbvf} \
       --phereal ${pi} \
       --nsnp_win ${nsnp_win} \
+      --win ${win} \
       --thread ${thread} \
       --iter ${iter} \
       --burnin ${burnin} \

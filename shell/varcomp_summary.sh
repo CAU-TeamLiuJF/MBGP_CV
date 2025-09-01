@@ -89,7 +89,8 @@ read -ra cors_array <<<"$cor"
 
 ##############  Variance component sorting  ##############
 ##########################################################
-for p in "${traits_array[@]}"; do
+echo "sim_rep dist rg ref model ref breed trait rep fold accuracy unbiasedness rank val" >${out}
+for p in "${traits_array[@]}"; do # p=${traits_array[0]};re=${reps_array[0]};d=${dists_array[0]};c=${cors_array[0]}
   for re in "${reps_array[@]}"; do
     for d in "${dists_array[@]}"; do
       for c in "${cors_array[@]}"; do
@@ -107,13 +108,13 @@ for p in "${traits_array[@]}"; do
         [[ ! -d ${path} ]] && continue
 
         ## Heritability within breed
-        for b in "${breeds_array[@]}"; do
+        for b in "${breeds_array[@]}"; do # b=${breeds_array[0]}
           ## Cross-validation parameters
           rep=$(find ${path}/${b}/val1 -name "rep*" -type d | wc -l)
           fold=$(find ${path}/${b}/val* -name "rep1" -type d | wc -l)
 
           ## Variance components for each subset
-          for r in $(seq 1 ${rep}); do
+          for r in $(seq 1 ${rep}); do # r=1;f=1
             for f in $(seq 1 ${fold}); do
                 ## within prediction --- GBLUP
                 lst=${path}/${b}/val${f}/rep${r}/${DIR_within}.lst

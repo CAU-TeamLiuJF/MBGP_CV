@@ -435,7 +435,7 @@ for r in $(seq 1 ${rep}); do
       fi
 
       ## Run Bayes model
-      job_pool_run mbBayesABLD \
+      job_pool_run /usr/bin/time -v mbBayesABLD \
         --bfile ${bfile} \
         --phef ${workdir}/val${f}/rep${r}/pheno.txt \
         --fix "${fix_eff}" \
@@ -457,7 +457,7 @@ for r in $(seq 1 ${rep}); do
 
     ## mbBayesAB model
     if [[ ${method} == "bayesR" ]]; then
-      job_pool_run $bayesR \
+      job_pool_run /usr/bin/time -v $bayesR \
         --proj "${workdir}/val${f}/rep${r}" \
         --bfile "${bfile}" \
         --phe_col ${phe_col} \
@@ -475,9 +475,9 @@ for r in $(seq 1 ${rep}); do
 
       ## Run BLUP model
       if [[ ${dmu4} ]]; then
-        [[ ! ${debug} ]] && job_pool_run run_dmu4 ${DIR} ${workdir}/val${f}/rep${r}
+        [[ ! ${debug} ]] && job_pool_run /usr/bin/time -v run_dmu4 ${DIR} ${workdir}/val${f}/rep${r}
       else
-        [[ ! ${debug} ]] && job_pool_run run_dmuai ${DIR} ${workdir}/val${f}/rep${r}
+        [[ ! ${debug} ]] && job_pool_run /usr/bin/time -v run_dmuai ${DIR} ${workdir}/val${f}/rep${r}
       fi
     fi
   done
