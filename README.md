@@ -1,4 +1,3 @@
-mbBayesABLD (Bayesian multi-breed genomic prediction model that partitions each chromosome into non-overlapping blocks based on LD patterns)
 This repository contains the data, scripts, and program files required to reproduce the paper *"Multi-trait Bayesian models enhance the accuracy of genomic prediction in multi-breed reference populations"*.
 
 > Please cite the original paper when using the contents of this repository.
@@ -80,6 +79,7 @@ The repository organizes programs into layers: a top-level control script (`main
 
 **Software dependencies (install beforehand)**
 
+- [mbBayesABLD](./mbBayesABLD) (In-house software)
 - R (recommended ≥ 4.1.0; tested with R 4.3.1)
 - plink (for genotype processing)
 - QMSim (for simulations)
@@ -107,8 +107,8 @@ Assuming you have the zip file on the server under `/public/home/liujf/liwn/down
 
 ```bash
 cd /public/home/liujf/liwn/download
-unzip -d /public/home/liujf/liwn/code/GitHub mbBayesABLD-main.zip
-mv /public/home/liujf/liwn/code/GitHub/mbBayesABLD-main /public/home/liujf/liwn/code/GitHub/mbBayesABLD
+unzip -d /public/home/liujf/liwn/code/GitHub MBGP_CV-main.zip
+mv /public/home/liujf/liwn/code/GitHub/MBGP_CV-main /public/home/liujf/liwn/code/GitHub/MBGP_CV
 ```
 
 ## 3.2 Clone from GitHub (online)
@@ -117,7 +117,7 @@ If the server has Internet access, clone the repository:
 
 ```bash
 cd /public/home/liujf/liwn/code/GitHub
-git clone git@github.com:CAU-TeamLiuJF/mbBayesABLD.git
+git clone git@github.com:CAU-TeamLiuJF/MBGP_CV.git
 ```
 
 After cloning, verify that expected subdirectories (e.g., `data`, `bin`, `shell`) are present.
@@ -131,7 +131,7 @@ After cloning, verify that expected subdirectories (e.g., `data`, `bin`, `shell`
 Below is an example top-level layout and purpose of each folder/file:
 
 ```
-mbBayesABLD/
+MBGP_CV/
 ├─ bin/                    # Executables and binary tools (ensure executable permission)
 ├─ code/                   # R language scripts for tasks such as phenotype simulation
 ├─ prm/                    # Template file for generating QMSim software parameter cards
