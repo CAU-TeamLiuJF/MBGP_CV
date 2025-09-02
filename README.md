@@ -721,8 +721,8 @@ A minimal end-to-end example (assuming adequate resources and Slurm availability
 
 ```bash
 cd /public/home/liujf/liwn/code/GitHub
-git clone git@github.com:CAU-TeamLiuJF/mbBayesABLD.git
-cd mbBayesABLD
+git clone git@github.com:CAU-TeamLiuJF/MBGP_CV.git
+cd MBGP_CV
 ```
 
 2. Initialize environment:
