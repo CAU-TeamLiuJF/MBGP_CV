@@ -43,4 +43,4 @@ After trimming the subcutaneous and connective tissue from the pork slice, digit
 
 Genomic DNA was extracted from the **muscle** tissue of each animal using a standard phenol/chloroform extraction method and dissolved in Tris-EDTA buffer. All DNA samples were quantified and diluted to a final concentration of 75 ng/μl. Genotyping was performed using the CC1 **PorcineSNP50 BeadChip** (containing **51,368** SNPs) following the manufacturer's protocol (Sscrofa10.2).
 
-Quality control was performed to exclude SNPs with a **call rate** <95%, **MAF** <5%, or Hardy-Weinberg equilibrium P-value <10^-5. The call rate for all animals was >90%. A total of **40,016** SNPs and **1709** animals passed quality control and were retained for further statistical analysis.
+Quality control was performed to exclude SNPs with a **call rate** <95%, **MAF** <5%, or Hardy-Weinberg equilibrium P-value <10^-5. The call rate for all animals was >90%. A total of **37,304** SNPs and **1,702** animals passed quality control and were retained for further statistical analysis.
