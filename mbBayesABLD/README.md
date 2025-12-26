@@ -4,6 +4,13 @@
  * @FilePath: \mbBayesABLD\Readme.md
 -->
 
+## ⚠️ Intellectual Property Notice
+> **A patent has been filed for the core technology in this project.**
+For any use beyond personal viewing or reading (including but not limited to modification, distribution, or commercial use), **prior written authorization** from the corresponding author is required.
+> 
+> **Contact**: liujf@cau.edu.cn
+
+
 # User Manual
 
 - [1. Software Introduction](#1-software-introduction)
