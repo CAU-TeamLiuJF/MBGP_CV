@@ -4,8 +4,9 @@ This repository contains the data, scripts, and program files required to reprod
 > Author contact information is given at the end.
 > 
 
-# ⚠️ Notice
-The technology related to this project is under patent application. For any usage beyond personal reading (including but not limited to modification, distribution, or commercial use), please contact the corresponding author for authorization.  
+## ⚠️ Intellectual Property Notice
+**A patent has been filed for the core technology in this project.**
+For any use beyond personal viewing or reading (including but not limited to modification, distribution, or commercial use), **prior written authorization** from the corresponding author is required.
 **Contact**: liujf@cau.edu.cn
 
 # User Manual
