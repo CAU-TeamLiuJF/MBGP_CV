@@ -4,10 +4,10 @@
 
 引用：Li, W.; Zhang, M.; Du, H.; Wu, J.; Zhou, L.; Liu, J. Multi-Trait Bayesian Models Enhance the Accuracy of Genomic Prediction in Multi-Breed Reference Populations. Agriculture **2024**, 14, 626. https://doi.org/10.3390/agriculture14040626
 
-## ⚠️ 声明
+## ⚠️ 知识产权声明
 
 > 本项目相关技术已申请专利。**除个人阅读外**，任何使用、复制、修改或商业应用前，**必须**联系通讯作者获取授权。  
-> 📧 联系邮箱：liujf@cau.edu.cn
+> 联系邮箱：liujf@cau.edu.cn
 
 # 运行环境
 
